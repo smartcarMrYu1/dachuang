@@ -17,6 +17,7 @@
 int main(void)
 {
     /* user app entry */
-
+//  light_led();
+	HCSR501_part();
     return 0;
 }
