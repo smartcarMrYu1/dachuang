@@ -1,0 +1,39 @@
+*.pyc
+*.map
+*.dblite
+*.elf
+*.bin
+*.hex
+*.axf
+*.exe
+*.pdb
+*.idb
+*.ilk
+*.old
+build
+Debug
+documentation/html
+packages/
+*~
+*.o
+*.obj
+*.bak
+*.dep
+*.lib
+*.i
+*.d
+.DS_Stor*
+.config
+.config 3
+.config 4
+.config 5
+Midea-X1
+*.uimg
+GPATH
+GRTAGS
+GTAGS
+.vscode
+DebugConfig/rt-thread_stm32f4xx_STM32F407ZGTx.dbgconf
+EventRecorderStub.scvd
+project.uvguix.1
+
