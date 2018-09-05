@@ -11,8 +11,8 @@
 #include <stdlib.h>
 #include <rtdevice.h>
 
-#define EVENT_W_PIN  (0x01)
-#define HCSR_PIN     (4)
+#define EVENT_W_PIN  (4)
+//#define HCSR_PIN     (4)
 
 static rt_mq_t hcsr_mq;
 static rt_timer_t hcs_timer;
@@ -30,23 +30,22 @@ static void HCSR501_timer_callback(void *parameter)   //回调函数尽量的简短，起到
 
 static void HCSR501_thread_entry(void *parameter)
 {
-    rt_uint8_t HCSR501_data;
+    rt_uint8_t HCSR501_data1;
     rt_uint8_t pin_value;
-    rt_pin_mode(HCSR_PIN,PIN_MODE_INPUT);
+    rt_pin_mode(EVENT_W_PIN,PIN_MODE_INPUT_PULLUP);
     while (1)
     {
-        if (rt_mq_recv(hcsr_mq, &HCSR501_data, sizeof(HCSR501_data), RT_WAITING_FOREVER) == RT_EOK)
+        if (rt_mq_recv(hcsr_mq, &HCSR501_data1, sizeof(HCSR501_data1), RT_WAITING_FOREVER) == RT_EOK)
         {
-            switch(HCSR501_data)
+            switch(HCSR501_data1)
             {
             case EVENT_W_PIN:
             {
-                pin_value = rt_pin_read(HCSR_PIN);   
-                rt_kprintf("pin_value:%d",&pin_value);
+                pin_value = rt_pin_read(EVENT_W_PIN);   
+                rt_kprintf("pin_value is low:%d  \n",pin_value);
             }
             }
-        }
-    //        rt_thread_delay(10);
+        };
     }
 }
 
@@ -54,7 +53,7 @@ int HCSR501_part_init(void)
 {
 	rt_thread_t tid;
 
-	hcsr_mq = rt_mq_create("hcsr_mq",16,2,RT_IPC_FLAG_FIFO);
+	hcsr_mq = rt_mq_create("hcsr_mq",16,1,RT_IPC_FLAG_FIFO);
     if(hcsr_mq == RT_NULL)
     {
         rt_kprintf("F:%s L:%d err! mq create fail!\n,",__FUNCTION__,__LINE__);

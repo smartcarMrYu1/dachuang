@@ -19,6 +19,7 @@ int main(void)
     /* user app entry */
 //  light_led();
 	HCSR501_part_init();
+//    pin_text();
     return 0;
 }
 
