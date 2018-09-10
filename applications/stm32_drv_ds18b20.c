@@ -18,6 +18,8 @@
 
 #include <rtdevice.h>
 #include <rthw.h>
+// #include "board.h"
+#include <stm32f4xx.h>
 #include "stm32_drv_ds18b20.h"
 
 /****************************************************************************
@@ -30,21 +32,19 @@
 *   2>多个器件可添加多条引脚信息
 * 3.驱动注册函数会自动调用，无需手动调用
 ****************************************************************************/
+
 /* 驱动名字 */
 #define HARD_DEVICE_NAME_FORMAT        "18b20_%d"
 /* 引脚信息 */
-const static gpio_desc _hard_desc[] =
+const static gpio_des _hard_desc[] =
 {
-    {RCC_APB2Periph_GPIOA, GPIOA, GPIO_Pin_4},
+    {GPIOG, 9},
 };
-
-
 
 /***************************************************************************
 *                                分隔符                                    *
 ***************************************************************************/
-
-
+#define  DS18B20_DBG
 
 #ifdef  DS18B20_DBG
 #define DBG_PRINT(fmt, ...)   rt_kprintf("DS18B20_DBG:" fmt, ##__VA_ARGS__)
@@ -52,34 +52,109 @@ const static gpio_desc _hard_desc[] =
 #define DBG_PRINT(fmt, ...)
 #endif
 
-
-
-#if 0 /* 库函数方式 */
-	#define PIN_OUT_LOW(PORT_DQ,PIN_DQ)     GPIO_ResetBits(PORT_DQ, PIN_DQ)
-	#define PIN_OUT_HIGH(PORT_DQ,PIN_DQ)    GPIO_SetBits(PORT_DQ, PIN_DQ)
-	/* 读取引脚电平 */
-	#define PIN_INPUT(PORT_DQ,PIN_DQ)       GP IO_ReadInputDataBit(PORT_DQ, PIN_DQ)
-#else	/* 直接操作寄存器，提高速度 */
-	#define PIN_OUT_LOW(PORT_DQ,PIN_DQ)     PORT_DQ->BSRR |= (PIN_DQ<<16)
-	#define PIN_OUT_HIGH(PORT_DQ,PIN_DQ)    PORT_DQ->BSRR |= (PIN_DQ)
-	/* 读取引脚电平 */
-	#define PIN_INPUT(PORT_DQ,PIN_DQ)	   (PORT_DQ->IDR & PIN_DQ)
-#endif
-
-
 /* 获得数组元素个数 */
 #ifndef ARRAY_SIZE
 #define ARRAY_SIZE(arr)     (sizeof(arr)/sizeof(arr[0]))
 #endif
 
+/* 获得PIN */
+#define get_st_pin(gpio_pin) (0x01 << (gpio_pin&0xFF))
 
 /* DS18B20驱动结构体 */
 struct _ds18b20_drv
 {
     struct rt_device  device;      /* 通用驱动结构体 */
-    const gpio_desc * hard_desc;   /* 引脚信息 */
+    const gpio_des * hard_desc;   /* 引脚信息 */
     rt_mutex_t mutex;              /* 互斥量，多线程访问 */
 };
+
+void rt_delay_us(int us)
+{
+	rt_uint32_t ticks;
+	rt_uint32_t told,tnow,tcnt=0;
+	rt_uint32_t reload=SysTick->LOAD;
+	
+    /* 获得延时经过的tick数 */
+    ticks = us * (reload / (1000000 / RT_TICK_PER_SECOND));
+	
+    /* 第一次定时器的值 */
+    told = SysTick->VAL;
+    /* 循环获得当前时间，直到达到指定的时间后退出循环 */
+	while(1)
+	{
+		tnow = SysTick->VAL;
+		if(tnow != told)
+		{
+			if(tnow < told) tcnt += told - tnow;
+			else tcnt += reload - tnow + told;
+			told = tnow;
+			if(tcnt >= ticks) break;
+		}
+	}
+}
+//static void drv_clock_enable(GPIO_TypeDef *gpio)
+//{
+//    switch((rt_uint32_t)gpio)
+//    {
+//#ifdef __HAL_RCC_GPIOA_CLK_ENABLE
+//    case (rt_uint32_t)GPIOA:
+//        __HAL_RCC_GPIOA_CLK_ENABLE();
+//        break;
+//#endif
+//    case (rt_uint32_t)GPIOB:
+//        #ifdef __HAL_RCC_GPIOB_CLK_ENABLE
+//        __HAL_RCC_GPIOB_CLK_ENABLE();
+//        #endif
+//        break;
+//    case (rt_uint32_t)GPIOC:
+//        #ifdef __HAL_RCC_GPIOC_CLK_ENABLE
+//        __HAL_RCC_GPIOC_CLK_ENABLE();
+//        #endif
+//        break;
+//    case (rt_uint32_t)GPIOD:
+//        #ifdef __HAL_RCC_GPIOD_CLK_ENABLE
+//        __HAL_RCC_GPIOD_CLK_ENABLE();
+//        #endif
+//        break;
+//    case (rt_uint32_t)GPIOE:
+//        #ifdef __HAL_RCC_GPIOE_CLK_ENABLE
+//        __HAL_RCC_GPIOE_CLK_ENABLE();
+//        #endif
+//        break;
+//    case (rt_uint32_t)GPIOF:
+//        #ifdef __HAL_RCC_GPIOF_CLK_ENABLE
+//        __HAL_RCC_GPIOF_CLK_ENABLE();
+//        #endif
+//        break;
+//    case (rt_uint32_t)GPIOG:
+//        #ifdef __HAL_RCC_GPIOG_CLK_ENABLE
+//        __HAL_RCC_GPIOG_CLK_ENABLE();
+//        #endif
+//        break;
+//    case (rt_uint32_t)GPIOH:
+//        #ifdef __HAL_RCC_GPIOH_CLK_ENABLE
+//        __HAL_RCC_GPIOH_CLK_ENABLE();
+//        #endif
+//        break;
+//#ifdef __HAL_RCC_GPIOI_CLK_ENABLE
+//    case (rt_uint32_t)GPIOI:
+//        __HAL_RCC_GPIOI_CLK_ENABLE();
+//        break;
+//#endif
+//#ifdef __HAL_RCC_GPIOJ_CLK_ENABLE
+//    case (rt_uint32_t)GPIOJ:
+//        __HAL_RCC_GPIOJ_CLK_ENABLE();
+//        break;
+//#endif
+//#ifdef __HAL_RCC_GPIOK_CLK_ENABLE
+//    case (rt_uint32_t)GPIOK:
+//        __HAL_RCC_GPIOK_CLK_ENABLE();
+//        break;
+//#endif
+//    default:
+//        break;
+//    }
+//}
 
 /*
 ****************************************************************************
@@ -94,11 +169,14 @@ static rt_err_t _ds18b20_reset(struct _ds18b20_drv * drv)
 {
     uint8_t retry = 0;
 
-    PIN_OUT_LOW(drv->hard_desc->gpio, drv->hard_desc->pin);   //主机拉低总线650us
-    rt_delay_us(650);   //拉低650us
-    PIN_OUT_HIGH(drv->hard_desc->gpio, drv->hard_desc->pin);  //主机释放总线
-    rt_delay_us(10);   //等待10us
-    while(PIN_INPUT(drv->hard_desc->gpio, drv->hard_desc->pin)&&retry<200)  //等待总线被从机拉低
+//    DS18B20_IO_OUT();
+    DS18B20_Dout_LOW();   //主机拉低总线650us
+    rt_delay_us(750);   //拉低650us
+    DS18B20_Dout_HIGH(); //主机释放总线
+    rt_delay_us(15);   //等待10us
+    
+    DS18B20_Data_IN();
+    while(DS18B20_Data_IN() && retry<200)  //等待总线被从机拉低
 	{
 		retry++;
 		rt_delay_us(1);  
@@ -109,9 +187,8 @@ static rt_err_t _ds18b20_reset(struct _ds18b20_drv * drv)
         DBG_PRINT("TimeOut :DS18B20 not detected\r\n");
         return RT_ERROR;
     }
-        
-    
-    while((!PIN_INPUT(drv->hard_desc->gpio, drv->hard_desc->pin))&&retry<240)  //等待从机释放总线
+
+    while(!DS18B20_Data_IN() && retry<240)  //等待从机释放总线
 	{
 		retry++;
 		rt_delay_us(1);
@@ -142,11 +219,11 @@ static rt_err_t _ds18b20_read_byte(struct _ds18b20_drv * drv, uint8_t * data)
     
     for(i = 0;i < 8;i++)
     {
-        PIN_OUT_LOW(drv->hard_desc->gpio, drv->hard_desc->pin);     //主机拉低总线
+        DS18B20_Dout_LOW();     //主机拉低总线
         rt_delay_us(1);
-        PIN_OUT_HIGH(drv->hard_desc->gpio, drv->hard_desc->pin);    //主机释放总线
+        DS18B20_Dout_HIGH();    //主机释放总线
         rt_delay_us(12); 
-        if(PIN_INPUT(drv->hard_desc->gpio, drv->hard_desc->pin)) bit=1;  //读取总线电平
+        if(DS18B20_Data_IN()) bit=1;  //读取总线电平
         else bit=0;	        
         result=(bit<<7) | (result>>1);
         
@@ -177,16 +254,16 @@ static uint8_t _ds18b20_write_byte(struct _ds18b20_drv * drv, uint8_t data)
         data=data>>1;
         if (testb)
         {
-            PIN_OUT_LOW(drv->hard_desc->gpio,drv->hard_desc->pin); //主机拉低总线,准备往总线上写数据
+            DS18B20_Dout_LOW(); //主机拉低总线,准备往总线上写数据
             rt_delay_us(2);
-            PIN_OUT_HIGH(drv->hard_desc->gpio,drv->hard_desc->pin);     //主机写入一个位
+            DS18B20_Dout_HIGH();     //主机写入一个位
             rt_delay_us(60);
         }
         else
         {
-            PIN_OUT_LOW(drv->hard_desc->gpio,drv->hard_desc->pin); //主机拉低总线,准备往总线上写数据
+            DS18B20_Dout_LOW(); //主机拉低总线,准备往总线上写数据
             rt_delay_us(60);                                       //主机写入一个位
-            PIN_OUT_HIGH(drv->hard_desc->gpio,drv->hard_desc->pin);
+            DS18B20_Dout_HIGH();
             rt_delay_us(2);
         }
     }
@@ -231,7 +308,7 @@ static rt_err_t _ds18b20_start(struct _ds18b20_drv * drv)
 *其    他: 函数内部调用
 ****************************************************************************
 */
-static rt_err_t _ds18b20_read_data(struct _ds18b20_drv * drv, T * result)
+static rt_err_t _ds18b20_read_data(struct _ds18b20_drv * drv, float * result)
 {
     rt_base_t level;
     uint8_t  data_H, data_L;
@@ -273,20 +350,22 @@ static rt_err_t _ds18b20_read_data(struct _ds18b20_drv * drv, T * result)
 */
 static rt_err_t stm32_ds18b20_init(rt_device_t dev)
 {
-    GPIO_InitTypeDef  GPIO_InitStructure;
-    
+    GPIO_InitTypeDef GPIO_InitStruct;
     struct _ds18b20_drv * ds18b20 = (struct _ds18b20_drv *)dev;
-    __HAL_RCC_GPIOA_CLK_ENABLE();
-    
-    RCC_APB2PeriphClockCmd(ds18b20->hard_desc->rcc, ENABLE);	   //使能时钟
-    GPIO_InitStructure.Pin = ds18b20->hard_desc->pin;	       //选定引脚
-    GPIO_InitStructure.Mode = GPIO_MODE_OUTPUT_OD; 		       //设为开漏输出模式
-    GPIO_InitStructure.Speed = GPIO_SPEED_FREQ_HIGH;              //IO口最大速度
-    GPIO_Init(ds18b20->hard_desc->gpio, &GPIO_InitStructure);      //初始化IO口
-    GPIO_SetBits(ds18b20->hard_desc->gpio,ds18b20->hard_desc->pin);//输出1
-    
-    DBG_PRINT("GPIOx=%p, GPIO_Pin=%x\n",ds18b20->hard_desc->gpio,ds18b20->hard_desc->pin);
-    
+
+    /* GPIO Periph clock enable */
+	DS18B20_Dout_GPIO_CLK_ENABLE();
+    /* Configure GPIO_InitStructure */
+    GPIO_InitStruct.Pin = get_st_pin(ds18b20->hard_desc->pin);
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
+    GPIO_InitStruct.Pull = GPIO_PULLUP;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+    /* output setting: od. */
+//    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
+    HAL_GPIO_Init(ds18b20->hard_desc->gpio, &GPIO_InitStruct);
+
+	HAL_GPIO_WritePin(ds18b20->hard_desc->gpio, get_st_pin(ds18b20->hard_desc->pin), GPIO_PIN_SET);
+
     return RT_EOK;
 }
 
@@ -331,12 +410,12 @@ static rt_err_t stm32_ds18b20_close(rt_device_t dev)
 */
 static rt_size_t stm32_ds18b20_read(rt_device_t dev, rt_off_t pos, void* buffer, rt_size_t size)
 {
-    T temp;
+    float temp;
     int count = 0,i = 0;
-    T * data = (T *)buffer;
     struct _ds18b20_drv * ds18b20 = (struct _ds18b20_drv *)dev;
-    
-    while(i<size)
+	float *result = buffer;
+
+    while (i < (size / sizeof(float)))
     {
         rt_mutex_take(ds18b20->mutex,RT_WAITING_FOREVER);     //获取互斥信号量，加锁
         if(_ds18b20_start(ds18b20) == RT_EOK)                 //开始一次转换
@@ -344,19 +423,18 @@ static rt_size_t stm32_ds18b20_read(rt_device_t dev, rt_off_t pos, void* buffer,
             rt_thread_delay(800);                             //挂起等待一段时间
             if(_ds18b20_read_data(ds18b20, &temp) == RT_EOK)  //读取数据
             {
-                data[i] = temp;
+                result[i] = temp;
                 count++;
             }
             else
             {
-                data[i] = 85;
+                result[i] = 85;
             }
-                
         }
         rt_mutex_release(ds18b20->mutex);
         i++;
     }
-    
+
     return count;
 }
 
@@ -369,7 +447,7 @@ static rt_size_t stm32_ds18b20_read(rt_device_t dev, rt_off_t pos, void* buffer,
 *其    他: 函数内部调用,后面会增加改变精度命令,目前为空
 ****************************************************************************
 */
-static rt_err_t stm32_ds18b20_control(rt_device_t dev, rt_uint8_t cmd, void *args)
+static rt_err_t stm32_ds18b20_control(rt_device_t dev, int cmd, void *args)
 {
 
     return RT_EOK;
@@ -389,7 +467,7 @@ int ds18b20_drv_init(void)
     int i = 0, count = 0;
     char dev_name[sizeof(HARD_DEVICE_NAME_FORMAT) + 3] = "";
     struct _ds18b20_drv *dev = RT_NULL;
-    
+
     for(i=0; i<ARRAY_SIZE(_hard_desc);i++)          //遍历数组，添加DS18B20驱动
     {
         rt_sprintf(dev_name, HARD_DEVICE_NAME_FORMAT, i);  //获得完整驱动名字
@@ -398,7 +476,7 @@ int ds18b20_drv_init(void)
             DBG_PRINT("name repetition\r\n");
             continue;
         }
-        
+
         dev = (struct _ds18b20_drv *)rt_malloc(sizeof(struct _ds18b20_drv));  //申请内存
         if (RT_NULL == dev)
         {
@@ -414,7 +492,7 @@ int ds18b20_drv_init(void)
             rt_free(dev);
             continue;
         }
-        
+
         dev->hard_desc        = &(_hard_desc[i]);
         dev->device.type      = RT_Device_Class_Miscellaneous;
         dev->device.init      = stm32_ds18b20_init;
@@ -435,4 +513,5 @@ int ds18b20_drv_init(void)
 
 
 INIT_DEVICE_EXPORT(ds18b20_drv_init);   //驱动自动调用
+
 
