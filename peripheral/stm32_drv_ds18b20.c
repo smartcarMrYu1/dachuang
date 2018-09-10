@@ -283,14 +283,12 @@ static uint8_t _ds18b20_write_byte(struct _ds18b20_drv * drv, uint8_t data)
 */
 static rt_err_t _ds18b20_start(struct _ds18b20_drv * drv)
 {
-    rt_base_t level;
-    
     if(_ds18b20_reset(drv) == RT_EOK)
     {
-        level = rt_hw_interrupt_disable();     //禁止中断,防止通信被打断
+        rt_enter_critical();                   //禁止中断,防止通信被打断
         _ds18b20_write_byte(drv,0xcc);	       //发命令 跳过读 ROM
         _ds18b20_write_byte(drv,0x44);	       //发命令 开始转换
-        rt_hw_interrupt_enable(level);         //开启中断
+        rt_exit_critical();
         
         return RT_EOK;
     }
@@ -310,17 +308,16 @@ static rt_err_t _ds18b20_start(struct _ds18b20_drv * drv)
 */
 static rt_err_t _ds18b20_read_data(struct _ds18b20_drv * drv, float * result)
 {
-    rt_base_t level;
     uint8_t  data_H, data_L;
     short data;
     
     _ds18b20_reset(drv);                 //复位，准备进行通信
-    level = rt_hw_interrupt_disable();   //禁止中断,防止通信被打断
+    rt_enter_critical();                 //进入临界区
     _ds18b20_write_byte(drv,0xcc);	     //发命令 跳过读 ROM
     _ds18b20_write_byte(drv,0xbe);	     //发命令 开始传送温度原始数据
     _ds18b20_read_byte(drv, &data_L); 	 //温度低8位  
     _ds18b20_read_byte(drv, &data_H); 	 //温度高8位
-    rt_hw_interrupt_enable(level);       //开启中断
+    rt_exit_critical();                  //退出临界区
     data = data_H;
     data <<= 8;
     data |=  data_L;
@@ -381,8 +378,13 @@ static rt_err_t stm32_ds18b20_init(rt_device_t dev)
 static rt_err_t stm32_ds18b20_open(rt_device_t dev, rt_uint16_t oflag)
 {   
     struct _ds18b20_drv * ds18b20 = (struct _ds18b20_drv *)dev;
+    rt_err_t err = RT_EOK;
     
-    return _ds18b20_reset(ds18b20);
+    rt_mutex_take(ds18b20->mutex,RT_WAITING_FOREVER);     //获取互斥信号量，加锁
+    err = _ds18b20_reset(ds18b20);
+    rt_mutex_release(ds18b20->mutex);
+    
+    return err;
 }
 
 /*

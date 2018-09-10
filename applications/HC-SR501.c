@@ -11,29 +11,37 @@
 #include <stdlib.h>
 #include <rtdevice.h>
 
-#define EVENT_W_PIN  (4)
-#define DS18B20_PIN  (124)
+#define EVENT_W_PIN      (0x01<<0)
+#define DS18B20_PIN      (0x01<<1)
+#define EVENT_UNKNOW     (0x00)
 
 static rt_mq_t hcsr_mq;
 static rt_timer_t hcs_timer;
-static rt_timer_t ds_timer;
 
 static void HCSR501_timer_callback(void *parameter)   //回调函数尽量的简短，起到通知的作用
 {
     rt_uint8_t HCSR501_data = EVENT_W_PIN;
-
+    static int _tick = 0;
+    
+    if(_tick%4 == 0)                   //4秒发该数据
+    {
+        HCSR501_data |=EVENT_UNKNOW;
+    } 
+    if(_tick%8 == 0)                   //8秒~~~~~~~
+    {
+        HCSR501_data |= EVENT_W_PIN;
+    }
+    if(_tick%8 == 0)
+    {
+        HCSR501_data |= DS18B20_PIN;
+    }
+    if(_tick ++ > 10000)
+    {
+        _tick = 0;
+    }
      if(rt_mq_send(hcsr_mq, &HCSR501_data, sizeof(HCSR501_data)) != RT_EOK)
      {
          rt_kprintf("F:%s L:%d err!  message quene1 full!\n,",__FUNCTION__,__LINE__);
-         return;
-     }
-}
-static void ds18b20_timer_callback(void *parameter)
-{
-     rt_uint8_t DS_data = DS18B20_PIN;
-     if(rt_mq_send(hcsr_mq, &DS_data, sizeof(DS_data)) != RT_EOK)
-     {
-         rt_kprintf("F:%s L:%d err!  message quene2 full!\n,",__FUNCTION__,__LINE__);
          return;
      }
 }
@@ -41,28 +49,10 @@ static void ds18b20_timer_callback(void *parameter)
 static void HCSR501_thread_entry(void *parameter)
 {
     rt_uint8_t HCSR501_data1;
-    rt_uint8_t pin_value;
-    rt_pin_mode(EVENT_W_PIN,PIN_MODE_INPUT_PULLUP);
-    while (1)
-    {
-        if (rt_mq_recv(hcsr_mq, &HCSR501_data1, sizeof(HCSR501_data1), RT_WAITING_FOREVER) == RT_EOK)
-        {
-            switch(HCSR501_data1)
-            {
-            case EVENT_W_PIN:
-            {
-                pin_value = rt_pin_read(EVENT_W_PIN);  
-                //ds18b20_read();
-                rt_kprintf("pin_value is low:%d  \n",pin_value);
-            }
-            case DS18B20_PIN:
-            {
-                pin_value = rt_pin_read(DS18B20_PIN);
-                rt_kprintf("ds18b20_pin_value is low:%d\n",pin_value);
-            }
-            }
-        }
-    }
+    
+    rt_device_t pin_dev;
+    rt_device_t ds18b20_dev;
+    
 }
 
 int HCSR501_part_init(void)
@@ -76,18 +66,10 @@ int HCSR501_part_init(void)
         return -1;
     }
 
-    hcs_timer = rt_timer_create("HCSR501_timer",HCSR501_timer_callback,RT_NULL,100,RT_TIMER_FLAG_PERIODIC);
+    hcs_timer = rt_timer_create("HCSR501_timer",HCSR501_timer_callback,RT_NULL,500,RT_TIMER_FLAG_PERIODIC);
     if(hcs_timer == RT_NULL)
     {
         rt_kprintf("F:%s L:%d err! hcs_timer create fail!\n,",__FUNCTION__,__LINE__);
-        rt_mq_delete(hcsr_mq);
-        return -1;
-    }
-    
-    ds_timer = rt_timer_create("ds18b20 timer",ds18b20_timer_callback,RT_NULL,1000,RT_TIMER_FLAG_PERIODIC);
-    if(ds_timer == RT_NULL)
-    {
-        rt_kprintf("F:%s L:%d err! ds_timer create fail!\n,",__FUNCTION__,__LINE__);
         rt_mq_delete(hcsr_mq);
         return -1;
     }

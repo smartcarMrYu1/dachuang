@@ -34,7 +34,7 @@
 /* рЩ╫епео╒ */
 const static gpio_desc _hard_desc[] =
 {
-    {RCC_APB2Periph_GPIOA, GPIOA, GPIO_Pin_5},
+    {GPIOA, 5},
 };
 
 
