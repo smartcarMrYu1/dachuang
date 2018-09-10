@@ -12,10 +12,11 @@
 #include <rtdevice.h>
 
 #define EVENT_W_PIN  (4)
-//#define HCSR_PIN     (4)
+#define DS18B20_PIN  (124)
 
 static rt_mq_t hcsr_mq;
 static rt_timer_t hcs_timer;
+static rt_timer_t ds_timer;
 
 static void HCSR501_timer_callback(void *parameter)   //回调函数尽量的简短，起到通知的作用
 {
@@ -23,7 +24,16 @@ static void HCSR501_timer_callback(void *parameter)   //回调函数尽量的简短，起到
 
      if(rt_mq_send(hcsr_mq, &HCSR501_data, sizeof(HCSR501_data)) != RT_EOK)
      {
-         rt_kprintf("F:%s L:%d err!  message quene full!\n,",__FUNCTION__,__LINE__);
+         rt_kprintf("F:%s L:%d err!  message quene1 full!\n,",__FUNCTION__,__LINE__);
+         return;
+     }
+}
+static void ds18b20_timer_callback(void *parameter)
+{
+     rt_uint8_t DS_data = DS18B20_PIN;
+     if(rt_mq_send(hcsr_mq, &DS_data, sizeof(DS_data)) != RT_EOK)
+     {
+         rt_kprintf("F:%s L:%d err!  message quene2 full!\n,",__FUNCTION__,__LINE__);
          return;
      }
 }
@@ -41,11 +51,17 @@ static void HCSR501_thread_entry(void *parameter)
             {
             case EVENT_W_PIN:
             {
-                pin_value = rt_pin_read(EVENT_W_PIN);   
+                pin_value = rt_pin_read(EVENT_W_PIN);  
+                //ds18b20_read();
                 rt_kprintf("pin_value is low:%d  \n",pin_value);
             }
+            case DS18B20_PIN:
+            {
+                pin_value = rt_pin_read(DS18B20_PIN);
+                rt_kprintf("ds18b20_pin_value is low:%d\n",pin_value);
             }
-        };
+            }
+        }
     }
 }
 
@@ -53,7 +69,7 @@ int HCSR501_part_init(void)
 {
 	rt_thread_t tid;
 
-	hcsr_mq = rt_mq_create("hcsr_mq",16,1,RT_IPC_FLAG_FIFO);
+	hcsr_mq = rt_mq_create("all_mq",32,2,RT_IPC_FLAG_FIFO);
     if(hcsr_mq == RT_NULL)
     {
         rt_kprintf("F:%s L:%d err! mq create fail!\n,",__FUNCTION__,__LINE__);
@@ -68,6 +84,14 @@ int HCSR501_part_init(void)
         return -1;
     }
     
+    ds_timer = rt_timer_create("ds18b20 timer",ds18b20_timer_callback,RT_NULL,1000,RT_TIMER_FLAG_PERIODIC);
+    if(ds_timer == RT_NULL)
+    {
+        rt_kprintf("F:%s L:%d err! ds_timer create fail!\n,",__FUNCTION__,__LINE__);
+        rt_mq_delete(hcsr_mq);
+        return -1;
+    }
+    
      tid = rt_thread_create("tid",HCSR501_thread_entry,RT_NULL,512,14,30);
      if(tid == RT_NULL)
      {
@@ -78,7 +102,8 @@ int HCSR501_part_init(void)
      }
      
      rt_thread_startup(tid);
-     rt_timer_start(hcs_timer);     
+     rt_timer_start(hcs_timer);    
+     rt_timer_start(ds_timer);       
      return 0;
 }
 
