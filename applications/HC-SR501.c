@@ -141,7 +141,7 @@ int HCSR501_part_init(void)
         return -1;
     }
     
-     tid = rt_thread_create("tid",HCSR501_thread_entry,RT_NULL,512,14,30);
+     tid = rt_thread_create("tid",HCSR501_thread_entry,RT_NULL,512,14,20);
      if(tid == RT_NULL)
      {
         rt_mq_delete(hcsr_mq);
