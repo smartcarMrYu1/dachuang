@@ -17,6 +17,7 @@
 
 #include <rtdevice.h>
 #include <rthw.h>
+#include <stm32f4xx.h>
 #include "stm32_drv_dht11.h"
 
 /****************************************************************************
@@ -38,11 +39,36 @@ const static gpio_desc _hard_desc[] =
 };
 
 
+static void rt_delay_us(int us)
+{
+	rt_uint32_t ticks;
+	rt_uint32_t told,tnow,tcnt=0;
+	rt_uint32_t reload=SysTick->LOAD;
+	
+    /* 获得延时经过的tick数 */
+    ticks = us * (reload / (1000000 / RT_TICK_PER_SECOND));
+	
+    /* 第一次定时器的值 */
+    told = SysTick->VAL;
+    /* 循环获得当前时间，直到达到指定的时间后退出循环 */
+	while(1)
+	{
+		tnow = SysTick->VAL;
+		if(tnow != told)
+		{
+			if(tnow < told) tcnt += told - tnow;
+			else tcnt += reload - tnow + told;
+			told = tnow;
+			if(tcnt >= ticks) break;
+		}
+	}
+}
+
 
 /***************************************************************************
 *                                分隔符                                    *
 ***************************************************************************/
-
+#define  DHT11_DBG
 
 
 #ifdef  DHT11_DBG
@@ -52,24 +78,25 @@ const static gpio_desc _hard_desc[] =
 #endif
 
 
-#if 0 /* 库函数方式 */
-	#define PIN_OUT_LOW(PORT_DQ,PIN_DQ)     GPIO_ResetBits(PORT_DQ, PIN_DQ)
-	#define PIN_OUT_HIGH(PORT_DQ,PIN_DQ)    GPIO_SetBits(PORT_DQ, PIN_DQ)
-	/* 读取引脚电平 */
-	#define PIN_INPUT(PORT_DQ,PIN_DQ)       GP IO_ReadInputDataBit(PORT_DQ, PIN_DQ)
-#else	/* 直接操作寄存器，提高速度 */
-	#define PIN_OUT_LOW(PORT_DQ,PIN_DQ)     PORT_DQ->BSRR |= (PIN_DQ<<16)
-	#define PIN_OUT_HIGH(PORT_DQ,PIN_DQ)    PORT_DQ->BSRR |= (PIN_DQ)
-	/* 读取引脚电平 */
-	#define PIN_INPUT(PORT_DQ,PIN_DQ)	   (PORT_DQ->IDR & PIN_DQ)
-#endif
+//#if 0 /* 库函数方式 */
+//	#define PIN_OUT_LOW(PORT_DQ,PIN_DQ)     GPIO_ResetBits(PORT_DQ, PIN_DQ)
+//	#define PIN_OUT_HIGH(PORT_DQ,PIN_DQ)    GPIO_SetBits(PORT_DQ, PIN_DQ)
+//	/* 读取引脚电平 */
+//	#define PIN_INPUT(PORT_DQ,PIN_DQ)       GP IO_ReadInputDataBit(PORT_DQ, PIN_DQ)
+//#else	/* 直接操作寄存器，提高速度 */
+//	#define PIN_OUT_LOW(PORT_DQ,PIN_DQ)     PORT_DQ->BSRR |= (PIN_DQ<<16)
+//	#define PIN_OUT_HIGH(PORT_DQ,PIN_DQ)    PORT_DQ->BSRR |= (PIN_DQ)
+//	/* 读取引脚电平 */
+//	#define PIN_INPUT(PORT_DQ,PIN_DQ)	   (PORT_DQ->IDR & PIN_DQ)
+//#endif
 
 
 /* 获得数组元素个数 */
 #ifndef ARRAY_SIZE
 #define ARRAY_SIZE(arr)     (sizeof(arr)/sizeof(arr[0]))
 #endif
-
+/* 获得PIN */
+#define get_st_pin(gpio_pin) (0x01 << (gpio_pin&0xFF))
 
 /* DHT11驱动结构体 */
 struct _dht11_drv
@@ -92,11 +119,13 @@ static rt_err_t _dht11_reset(struct _dht11_drv * drv)
 {
     uint8_t retry = 0;
     
-    PIN_OUT_LOW(drv->hard_desc->gpio,drv->hard_desc->pin);    //主机发送起始信号, 拉低时间 > 18ms
+    DHT11_Dout_LOW();    //主机发送起始信号, 拉低时间 > 18ms
     rt_thread_delay(20);//拉低20ms
-    PIN_OUT_HIGH(drv->hard_desc->gpio,drv->hard_desc->pin);   //主机拉高并释放总线
+    DHT11_Dout_HIGH();   //主机拉高并释放总线
     rt_delay_us(30);
-    while(PIN_INPUT(drv->hard_desc->gpio,drv->hard_desc->pin)&&retry<100)  //等待总线被拉低
+    
+    DHT11_Data_IN();
+    while(DHT11_Data_IN() && retry<100)  //等待总线被拉低
 	{
 		retry++;
 		rt_delay_us(1);
@@ -105,7 +134,7 @@ static rt_err_t _dht11_reset(struct _dht11_drv * drv)
 	if(retry>=100)             //超时返回错误
         return RT_ERROR;
 
-    while((!PIN_INPUT(drv->hard_desc->gpio,drv->hard_desc->pin))&&retry<100)   //等待总线被拉高
+    while((!DHT11_Data_IN())&&retry<100)   //等待总线被拉高
 	{
 		retry++;
 		rt_delay_us(1);
@@ -133,7 +162,7 @@ static rt_err_t _dht11_read_byte(struct _dht11_drv * drv, uint8_t * data)
     
     for(i = 0;i<8;i++)
     {
-        while(PIN_INPUT(drv->hard_desc->gpio,drv->hard_desc->pin)&&retry<100)//等待变为低电平
+        while(DHT11_Data_IN() && retry<100)//等待变为低电平
         {
             rt_delay_us(1);
             retry++;
@@ -141,7 +170,7 @@ static rt_err_t _dht11_read_byte(struct _dht11_drv * drv, uint8_t * data)
         if(retry>=100)          //超时返回
             return RT_ERROR;
         retry = 0;
-        while((!PIN_INPUT(drv->hard_desc->gpio,drv->hard_desc->pin))&&retry<100)//等待变高电平
+        while((!DHT11_Data_IN())&&retry<100)//等待变高电平
         {
             rt_delay_us(1);
             retry++;
@@ -150,7 +179,7 @@ static rt_err_t _dht11_read_byte(struct _dht11_drv * drv, uint8_t * data)
             return RT_ERROR;
         
         rt_delay_us(40);//等待40us
-        if(PIN_INPUT(drv->hard_desc->gpio,drv->hard_desc->pin)) bit=1;   //从总线上读取一位数据
+        if(DHT11_Data_IN()) bit=1;   //从总线上读取一位数据
         else bit=0;
         
         result = bit|(result<<1);
@@ -174,15 +203,14 @@ static rt_err_t _dht11_read_data(struct _dht11_drv * _drv, HT * result)
 {
     uint8_t i = 0;
     uint8_t temp_buf[5] = {0};
-    rt_base_t level;
     
     if(_dht11_reset(_drv)==RT_EOK)              //复位成功,开始读取数据
     {
         for(i = 0;i<5;i++)
         {
-            level = rt_hw_interrupt_disable();   //禁止中断,防止通信被打断
+            rt_enter_critical();
             _dht11_read_byte(_drv,&temp_buf[i]); //读取一字节数据
-            rt_hw_interrupt_enable(level);       //开启中断
+            rt_exit_critical();
         }
         if((temp_buf[0]+temp_buf[1]+temp_buf[2]+temp_buf[3])==temp_buf[4])  //计算校验和
 		{
@@ -207,16 +235,18 @@ static rt_err_t _dht11_read_data(struct _dht11_drv * _drv, HT * result)
 */
 static rt_err_t stm32_dht11_init(rt_device_t dev)
 {
-    GPIO_InitTypeDef  GPIO_InitStructure;
+    GPIO_InitTypeDef GPIO_InitStruct;
     
     struct _dht11_drv * dht11 = (struct _dht11_drv *)dev;
     
-    RCC_APB2PeriphClockCmd(dht11->hard_desc->rcc, ENABLE);	      //使能时钟
-    GPIO_InitStructure.GPIO_Pin = dht11->hard_desc->pin;          //选定引脚
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_OD;              //设为开漏输出模式
-    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;             //IO口最大速度
-    GPIO_Init(dht11->hard_desc->gpio, &GPIO_InitStructure);       //初始化IO口
-    GPIO_SetBits(dht11->hard_desc->gpio,dht11->hard_desc->pin);   //输出1
+    DHT11_Dout_GPIO_CLK_ENABLE();	      //使能时钟
+    
+    GPIO_InitStruct.Pin = get_st_pin(dht11->hard_desc->pin);          //选定引脚
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;                       //设为开漏输出模式
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;                //IO口最大速度
+    HAL_GPIO_Init(dht11->hard_desc->gpio, &GPIO_InitStruct);
+
+	HAL_GPIO_WritePin(dht11->hard_desc->gpio, get_st_pin(dht11->hard_desc->pin), GPIO_PIN_SET);
     
     return RT_EOK;
 }
@@ -233,8 +263,12 @@ static rt_err_t stm32_dht11_init(rt_device_t dev)
 static rt_err_t stm32_dht11_open(rt_device_t dev, rt_uint16_t oflag)
 {   
     struct _dht11_drv * dht11 = (struct _dht11_drv *)dev;
+    rt_err_t err = RT_EOK;
     
-    return _dht11_reset(dht11);
+    rt_mutex_take(dht11->mutex,RT_WAITING_FOREVER);     //获取互斥信号量，加锁
+    err = _dht11_reset(dht11);
+    rt_mutex_release(dht11->mutex);
+    return err;
 }
 
 /*

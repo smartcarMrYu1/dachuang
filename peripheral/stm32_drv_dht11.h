@@ -1,6 +1,6 @@
 #ifndef __STM32_DRV_DHT11_H__
 #define __STM32_DRV_DHT11_H__
-#include <board.h>
+//#include <board.h>
 
 
 /****************************************************************************
@@ -19,12 +19,20 @@ typedef struct dht11_data
 #ifndef RT_USING_GPIO_DESC
     typedef struct _gpio_desc
     {
-        uint32_t rcc;
         GPIO_TypeDef *gpio;
         uint32_t pin;
     }gpio_desc;
 #endif
  
+    
+#define DHT11_Dout_GPIO_CLK_ENABLE()              __HAL_RCC_GPIOA_CLK_ENABLE()
+#define DHT11_Dout_PORT                           GPIOA
+#define DHT11_Dout_PIN                            GPIO_PIN_5
+
+/***********************   DS18B20 函数宏定义  ****************************/
+#define DHT11_Dout_LOW()                          HAL_GPIO_WritePin(DHT11_Dout_PORT,DHT11_Dout_PIN,GPIO_PIN_RESET) 
+#define DHT11_Dout_HIGH()                         HAL_GPIO_WritePin(DHT11_Dout_PORT,DHT11_Dout_PIN,GPIO_PIN_SET)
+#define DHT11_Data_IN()                           HAL_GPIO_ReadPin(DHT11_Dout_PORT,DHT11_Dout_PIN)
     
 /****************************************************************************
 *函数列表

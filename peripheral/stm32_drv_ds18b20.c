@@ -68,7 +68,7 @@ struct _ds18b20_drv
     rt_mutex_t mutex;              /* 互斥量，多线程访问 */
 };
 
-void rt_delay_us(int us)
+static void rt_delay_us(int us)
 {
 	rt_uint32_t ticks;
 	rt_uint32_t told,tnow,tcnt=0;
@@ -92,69 +92,6 @@ void rt_delay_us(int us)
 		}
 	}
 }
-//static void drv_clock_enable(GPIO_TypeDef *gpio)
-//{
-//    switch((rt_uint32_t)gpio)
-//    {
-//#ifdef __HAL_RCC_GPIOA_CLK_ENABLE
-//    case (rt_uint32_t)GPIOA:
-//        __HAL_RCC_GPIOA_CLK_ENABLE();
-//        break;
-//#endif
-//    case (rt_uint32_t)GPIOB:
-//        #ifdef __HAL_RCC_GPIOB_CLK_ENABLE
-//        __HAL_RCC_GPIOB_CLK_ENABLE();
-//        #endif
-//        break;
-//    case (rt_uint32_t)GPIOC:
-//        #ifdef __HAL_RCC_GPIOC_CLK_ENABLE
-//        __HAL_RCC_GPIOC_CLK_ENABLE();
-//        #endif
-//        break;
-//    case (rt_uint32_t)GPIOD:
-//        #ifdef __HAL_RCC_GPIOD_CLK_ENABLE
-//        __HAL_RCC_GPIOD_CLK_ENABLE();
-//        #endif
-//        break;
-//    case (rt_uint32_t)GPIOE:
-//        #ifdef __HAL_RCC_GPIOE_CLK_ENABLE
-//        __HAL_RCC_GPIOE_CLK_ENABLE();
-//        #endif
-//        break;
-//    case (rt_uint32_t)GPIOF:
-//        #ifdef __HAL_RCC_GPIOF_CLK_ENABLE
-//        __HAL_RCC_GPIOF_CLK_ENABLE();
-//        #endif
-//        break;
-//    case (rt_uint32_t)GPIOG:
-//        #ifdef __HAL_RCC_GPIOG_CLK_ENABLE
-//        __HAL_RCC_GPIOG_CLK_ENABLE();
-//        #endif
-//        break;
-//    case (rt_uint32_t)GPIOH:
-//        #ifdef __HAL_RCC_GPIOH_CLK_ENABLE
-//        __HAL_RCC_GPIOH_CLK_ENABLE();
-//        #endif
-//        break;
-//#ifdef __HAL_RCC_GPIOI_CLK_ENABLE
-//    case (rt_uint32_t)GPIOI:
-//        __HAL_RCC_GPIOI_CLK_ENABLE();
-//        break;
-//#endif
-//#ifdef __HAL_RCC_GPIOJ_CLK_ENABLE
-//    case (rt_uint32_t)GPIOJ:
-//        __HAL_RCC_GPIOJ_CLK_ENABLE();
-//        break;
-//#endif
-//#ifdef __HAL_RCC_GPIOK_CLK_ENABLE
-//    case (rt_uint32_t)GPIOK:
-//        __HAL_RCC_GPIOK_CLK_ENABLE();
-//        break;
-//#endif
-//    default:
-//        break;
-//    }
-//}
 
 /*
 ****************************************************************************
@@ -285,7 +222,7 @@ static rt_err_t _ds18b20_start(struct _ds18b20_drv * drv)
 {
     if(_ds18b20_reset(drv) == RT_EOK)
     {
-        rt_enter_critical();                   //禁止中断,防止通信被打断
+        rt_enter_critical();                   //进入临时区
         _ds18b20_write_byte(drv,0xcc);	       //发命令 跳过读 ROM
         _ds18b20_write_byte(drv,0x44);	       //发命令 开始转换
         rt_exit_critical();
