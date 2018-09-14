@@ -13,6 +13,7 @@
 
 #define EVENT_W_PIN      (0x01<<0)
 #define DS18B20_PIN      (0x01<<1)
+#define DHt111_PIN       (0x01<<2)
 #define EVENT_UNKNOW     (0x00)
 
 static rt_mq_t hcsr_mq;
@@ -35,6 +36,10 @@ static void HCSR501_timer_callback(void *parameter)   //回调函数尽量的简短，起到
     {
         HCSR501_data |= DS18B20_PIN;
     }
+    if(_tick%8 == 0)
+    {
+        HCSR501_data |= DHT11_PIN;
+    }
     if(_tick ++ > 10000)
     {
         _tick = 0;
@@ -48,12 +53,13 @@ static void HCSR501_timer_callback(void *parameter)   //回调函数尽量的简短，起到
 
 static void HCSR501_thread_entry(void *parameter)
 {
-    float buff[1];
+    float buff[2];
     
     rt_uint8_t HCSR501_data1;
     
     rt_device_t pin_dev;
     rt_device_t ds18b20_dev;
+    rt_device_t dht11_dev;
     
     pin_dev = rt_device_find("pin");
     if(pin_dev)
@@ -76,14 +82,25 @@ static void HCSR501_thread_entry(void *parameter)
     {
         if(rt_device_open(ds18b20_dev,RT_DEVICE_OFLAG_RDONLY) == RT_EOK)   //以只读方式打开
         {
-            struct rt_device_pin_mode pin_mode;
+            struct rt_device_pin_mode ds18b20_pin_mode;
             
-            pin_mode.pin = 124;
-            pin_mode.mode = PIN_MODE_INPUT_PULLUP;
-            if(rt_device_control(ds18b20_dev,0,&pin_mode) != RT_EOK)
+            ds18b20_pin_mode.pin = 124;
+            ds18b20_pin_mode.mode = PIN_MODE_INPUT_PULLUP;
+            if(rt_device_control(ds18b20_dev,0,&ds18b20_pin_mode) != RT_EOK)
             {
                 rt_kprintf("ds18b20 pin open fail!!\n");
             }
+        }
+    }
+    
+    dht11_dev = rt_device_find("dht11_0");
+    if(dht11_dev)
+    {
+        if(rt_device_open(dht11_dev,RT_DEVICE_OFLAG_RDONLY) == RT_EOK)
+        {
+            struct rt_device_pin_mode dht11_pin_mode;
+            
+            dht11_pin_mode.pin = 
         }
     }
     
