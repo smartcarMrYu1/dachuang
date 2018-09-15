@@ -25,9 +25,9 @@ typedef struct dht11_data
 #endif
  
     
-#define DHT11_Dout_GPIO_CLK_ENABLE()              __HAL_RCC_GPIOA_CLK_ENABLE()
-#define DHT11_Dout_PORT                           GPIOA
-#define DHT11_Dout_PIN                            GPIO_PIN_5
+#define DHT11_Dout_GPIO_CLK_ENABLE()              __HAL_RCC_GPIOC_CLK_ENABLE()
+#define DHT11_Dout_PORT                           GPIOC
+#define DHT11_Dout_PIN                            GPIO_PIN_7
 
 /***********************   DS18B20 º¯Êýºê¶¨Òå  ****************************/
 #define DHT11_Dout_LOW()                          HAL_GPIO_WritePin(DHT11_Dout_PORT,DHT11_Dout_PIN,GPIO_PIN_RESET) 

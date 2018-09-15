@@ -35,34 +35,11 @@
 /* 引脚信息 */
 const static gpio_desc _hard_desc[] =
 {
-    {GPIOA, 5},
+    {GPIOC, 7},
 };
 
 
-static void rt_delay_us(int us)
-{
-	rt_uint32_t ticks;
-	rt_uint32_t told,tnow,tcnt=0;
-	rt_uint32_t reload=SysTick->LOAD;
-	
-    /* 获得延时经过的tick数 */
-    ticks = us * (reload / (1000000 / RT_TICK_PER_SECOND));
-	
-    /* 第一次定时器的值 */
-    told = SysTick->VAL;
-    /* 循环获得当前时间，直到达到指定的时间后退出循环 */
-	while(1)
-	{
-		tnow = SysTick->VAL;
-		if(tnow != told)
-		{
-			if(tnow < told) tcnt += told - tnow;
-			else tcnt += reload - tnow + told;
-			told = tnow;
-			if(tcnt >= ticks) break;
-		}
-	}
-}
+
 
 
 /***************************************************************************
@@ -105,6 +82,32 @@ struct _dht11_drv
     const  gpio_desc * hard_desc;   /* 引脚信息 */
     rt_mutex_t mutex;               /* 互斥量，多线程访问 */
 };
+
+
+static void rt_delay_us(int us)
+{
+	rt_uint32_t ticks;
+	rt_uint32_t told,tnow,tcnt=0;
+	rt_uint32_t reload=SysTick->LOAD;
+	
+    /* 获得延时经过的tick数 */
+    ticks = us * (reload / (1000000 / RT_TICK_PER_SECOND));
+	
+    /* 第一次定时器的值 */
+    told = SysTick->VAL;
+    /* 循环获得当前时间，直到达到指定的时间后退出循环 */
+	while(1)
+	{
+		tnow = SysTick->VAL;
+		if(tnow != told)
+		{
+			if(tnow < told) tcnt += told - tnow;
+			else tcnt += reload - tnow + told;
+			told = tnow;
+			if(tcnt >= ticks) break;
+		}
+	}
+}
 
 /*
 ****************************************************************************
@@ -242,7 +245,8 @@ static rt_err_t stm32_dht11_init(rt_device_t dev)
     DHT11_Dout_GPIO_CLK_ENABLE();	      //使能时钟
     
     GPIO_InitStruct.Pin = get_st_pin(dht11->hard_desc->pin);          //选定引脚
-    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;                       //设为开漏输出模式
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;                       //设为开漏输出模式
+    GPIO_InitStruct.Pull = GPIO_PULLUP;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;                //IO口最大速度
     HAL_GPIO_Init(dht11->hard_desc->gpio, &GPIO_InitStruct);
 

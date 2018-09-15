@@ -13,7 +13,7 @@
 
 #define EVENT_W_PIN      (0x01<<0)
 #define DS18B20_PIN      (0x01<<1)
-#define DHt111_PIN       (0x01<<2)
+#define DHT11_PIN        (0x01<<2)
 #define EVENT_UNKNOW     (0x00)
 
 static rt_mq_t hcsr_mq;
@@ -28,7 +28,7 @@ static void HCSR501_timer_callback(void *parameter)   //回调函数尽量的简短，起到
     {
         HCSR501_data |=EVENT_UNKNOW;
     } 
-    if(_tick%8 == 0)                   //8秒~~~~~~~
+    if(_tick%4 == 0)                   //8秒~~~~~~~
     {
         HCSR501_data |= EVENT_W_PIN;
     }
@@ -36,7 +36,7 @@ static void HCSR501_timer_callback(void *parameter)   //回调函数尽量的简短，起到
     {
         HCSR501_data |= DS18B20_PIN;
     }
-    if(_tick%8 == 0)
+    if(_tick%12 == 0)
     {
         HCSR501_data |= DHT11_PIN;
     }
@@ -53,7 +53,8 @@ static void HCSR501_timer_callback(void *parameter)   //回调函数尽量的简短，起到
 
 static void HCSR501_thread_entry(void *parameter)
 {
-    float buff[2];
+    float ds18b20_buff[1];
+    float dht11_buff[1];
     
     rt_uint8_t HCSR501_data1;
     
@@ -100,7 +101,12 @@ static void HCSR501_thread_entry(void *parameter)
         {
             struct rt_device_pin_mode dht11_pin_mode;
             
-            dht11_pin_mode.pin = 
+            dht11_pin_mode.pin = 97;
+            dht11_pin_mode.mode = PIN_MODE_INPUT_PULLDOWN;
+            if(rt_device_control(dht11_dev,0,&dht11_pin_mode) != RT_EOK)
+            {
+                rt_kprintf("dht11 pin open fail!!\n");
+            }
         }
     }
     
@@ -131,8 +137,16 @@ static void HCSR501_thread_entry(void *parameter)
              {
                  if(ds18b20_dev)
                  {
-                     rt_device_read(ds18b20_dev,0,buff,sizeof(buff));
-                     rt_kprintf("tmp:%d\n",(int)(buff[0]));
+                     rt_device_read(ds18b20_dev,0,ds18b20_buff,sizeof(ds18b20_buff));
+                     rt_kprintf("tmp:%d\n",(int)(ds18b20_buff[0]));
+                 }
+             }
+             if(HCSR501_data1 & DHT11_PIN)
+             {
+                 if(dht11_dev)
+                 {
+                     rt_device_read(dht11_dev,0,dht11_buff,sizeof(dht11_buff));
+                     rt_kprintf("dht11_tmp:%d\n",(int)(dht11_buff[0]));
                  }
              }
          }
