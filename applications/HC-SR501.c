@@ -10,6 +10,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <rtdevice.h>
+#include "app_uart.h"
+
 
 #define EVENT_W_PIN      (0x01<<0)
 #define DS18B20_PIN      (0x01<<1)
@@ -19,6 +21,12 @@
 static rt_mq_t hcsr_mq;
 static rt_timer_t hcs_timer;
 
+
+/*********************************************
+*函数名：HCSR501_timer_callback
+*功能：HCSR501回调函数
+*备注：
+**********************************************/
 static void HCSR501_timer_callback(void *parameter)   //回调函数尽量的简短，起到通知的作用
 {
     rt_uint8_t HCSR501_data = EVENT_W_PIN;
@@ -51,6 +59,11 @@ static void HCSR501_timer_callback(void *parameter)   //回调函数尽量的简短，起到
      }
 }
 
+/*************************************************
+*函数名：HCSR501_thread_entry
+*功能：
+*备注：
+*************************************************/
 static void HCSR501_thread_entry(void *parameter)
 {
     float ds18b20_buff[1];
@@ -153,9 +166,43 @@ static void HCSR501_thread_entry(void *parameter)
     }
 }
 
+/***********************************************
+*函数名：test_thread_entry
+*功能：
+*备注：
+************************************************/
+static void test_thread_entry(void* parameter)
+{    
+    rt_uint8_t uart_rx_data;
+    rt_device_t uart_dev;
+	
+		uart_dev = uart_open("uart2");
+    if ( uart_dev!= RT_EOK)
+    {
+			 rt_kprintf("F:%s L:%d err!  uart open error!\n,",__FUNCTION__,__LINE__);
+		   return -1;
+    }
+		
+
+    while (1)
+    {   
+        /* 读数据 */
+        uart_rx_data = uart_getchar();
+        /* 错位 */
+        uart_rx_data = uart_rx_data + 1;
+        /* 输出 */
+        uart_putchar(uart_rx_data);
+
+    }            
+}
+
+
+
+
 int HCSR501_part_init(void)
 {
 	rt_thread_t tid;
+	rt_thread_t uart_tid;
 
 	hcsr_mq = rt_mq_create("all_mq",32,2,RT_IPC_FLAG_FIFO);
     if(hcsr_mq == RT_NULL)
@@ -180,7 +227,15 @@ int HCSR501_part_init(void)
         rt_kprintf("F:%s L:%d err! tid create fail!\n,",__FUNCTION__,__LINE__);
         return -1;
      }
+		 
+		 uart_tid = rt_thread_create("uart_thread",test_thread_entry,RT_NULL,1024,2,10);
+		 if(uart_tid == RT_NULL)
+		 {
+				rt_kprintf("F:%s L:%d err! uart_tid create fail!\n,",__FUNCTION__,__LINE__);
+			  return -1;
+		 }
      
+		 rt_thread_startup(uart_tid);
      rt_thread_startup(tid);
      rt_timer_start(hcs_timer);        
      return 0;

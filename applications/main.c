@@ -21,6 +21,6 @@ int main(void)
 //    HCSR501_part_init();
 //  pin_text();
     //ds18b20_read();
+	  //uart_part();
     return 0;
 }
-

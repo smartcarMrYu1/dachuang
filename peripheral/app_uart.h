@@ -32,5 +32,6 @@ rt_err_t uart_open(const char *name);
 rt_uint8_t uart_getchar(void);
 void uart_putchar(const rt_uint8_t c);
 void uart_putstring(const rt_uint8_t *s);
+int uart_part(void);
 
 #endif

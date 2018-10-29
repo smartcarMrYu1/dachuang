@@ -48,20 +48,6 @@ static rt_err_t uart_intput(rt_device_t dev, rt_size_t size)
     return RT_EOK;
 }
 
-rt_uint8_t uart_getchar(void)
-{
-    rt_uint32_t e;
-    rt_uint8_t ch;
-
-    /* 读取1字节数据 */
-    while (rt_device_read(uart_device, 0, &ch, 1) != 1)
-    {
-         /* 接收事件 */
-        rt_event_recv(&event, UART_RX_EVENT,RT_EVENT_FLAG_AND | RT_EVENT_FLAG_CLEAR,RT_WAITING_FOREVER, &e);
-    }
-
-    return ch;
-}
 void uart_putchar(const rt_uint8_t c)
 {
     rt_size_t len = 0;
@@ -123,49 +109,5 @@ rt_err_t uart_open(const char *name)
 
 
 
-void test_thread_entry(void* parameter)
-{    
-    rt_uint8_t uart_rx_data;
 
-    /* 打开串口 */
-    if (uart_open("uart2") != RT_EOK)
-    {
-        rt_kprintf("uart open error.\n");
-         while (1)
-         {
-            rt_thread_delay(10);
-         }
-    }
 
-    /* 单个字符写 */
-    uart_putchar('2');
-    uart_putchar('0');
-    uart_putchar('1');
-    uart_putchar('8');
-    uart_putchar('\n');
-    /* 写字符串 */
-    uart_putstring("Hello RT-Thread!\r\n");
-
-    while (1)
-    {   
-        /* 读数据 */
-        uart_rx_data = uart_getchar();
-        /* 错位 */
-        uart_rx_data = uart_rx_data + 1;
-        /* 输出 */
-        uart_putchar(uart_rx_data);
-
-    }            
-}
-
-int uart_part(void)
-{
-    uart_tid = rt_thread_create("test",test_thread_entry, RT_NULL,1024, 2, 10);
-		if(uart_tid == RT_NULL)
-		{
-				rt_kprintf("F:%s L:%d err! uart_tid create fail!\n,",__FUNCTION__,__LINE__);
-				return -1;
-		}
-
-    return 0;
-}
