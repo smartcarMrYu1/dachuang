@@ -18,6 +18,7 @@
 #define DHT11_PIN        (0x01<<2)
 #define EVENT_UNKNOW     (0x00)
 
+
 static rt_mq_t hcsr_mq;
 static rt_timer_t hcs_timer;
 
@@ -66,19 +67,19 @@ static void HCSR501_timer_callback(void *parameter)   //回调函数尽量的简短，起到
 *************************************************/
 static void HCSR501_thread_entry(void *parameter)
 {
-    float ds18b20_buff[1];
-    float dht11_buff[1];
-    
+	  float ds18b20_buff[1];
+		float dht11_buff[1];
+	
     rt_uint8_t HCSR501_data1;
-    
     rt_device_t pin_dev;
     rt_device_t ds18b20_dev;
     rt_device_t dht11_dev;
+	  rt_device_t uart_device;  //串口设备
     
     pin_dev = rt_device_find("pin");
     if(pin_dev)
     {
-        if(rt_device_open(pin_dev,RT_DEVICE_OFLAG_RDONLY) == RT_EOK)   //以只读方式打开
+        if(rt_device_open(pin_dev,RT_DEVICE_OFLAG_RDONLY) == RT_EOK)   //以只读方式打开  IO
         {
             struct rt_device_pin_mode pin_mode;
             
@@ -94,7 +95,7 @@ static void HCSR501_thread_entry(void *parameter)
     ds18b20_dev = rt_device_find("18b20_0");
     if(ds18b20_dev)
     {
-        if(rt_device_open(ds18b20_dev,RT_DEVICE_OFLAG_RDONLY) == RT_EOK)   //以只读方式打开
+        if(rt_device_open(ds18b20_dev,RT_DEVICE_OFLAG_RDONLY) == RT_EOK)   //以只读方式打开   DS18B20
         {
             struct rt_device_pin_mode ds18b20_pin_mode;
             
@@ -107,7 +108,7 @@ static void HCSR501_thread_entry(void *parameter)
         }
     }
     
-    dht11_dev = rt_device_find("dht11_0");
+    dht11_dev = rt_device_find("dht11_0");                                //DHT11
     if(dht11_dev)
     {
         if(rt_device_open(dht11_dev,RT_DEVICE_OFLAG_RDONLY) == RT_EOK)
@@ -122,6 +123,7 @@ static void HCSR501_thread_entry(void *parameter)
             }
         }
     }
+		
     
     while(1)
     {
@@ -144,14 +146,15 @@ static void HCSR501_thread_entry(void *parameter)
                          rt_kprintf("pin status is :%s \n",pin_status.status ? "H" : "L");
                      }
                  }
-                 
              }
              if(HCSR501_data1 & DS18B20_PIN)
              {
                  if(ds18b20_dev)
                  {
                      rt_device_read(ds18b20_dev,0,ds18b20_buff,sizeof(ds18b20_buff));
-                     rt_kprintf("tmp:%d\n",(int)(ds18b20_buff[0]));
+//									   uart_putchar();
+									   //rt_kprintf("tmp: %d",(int)(ds18b20_buff[0]));
+                     rt_kprintf("5A A5 05 82 10 01 00 65");
                  }
              }
              if(HCSR501_data1 & DHT11_PIN)
@@ -166,35 +169,23 @@ static void HCSR501_thread_entry(void *parameter)
     }
 }
 
-/***********************************************
-*函数名：test_thread_entry
-*功能：
-*备注：
-************************************************/
-static void test_thread_entry(void* parameter)
-{    
-    rt_uint8_t uart_rx_data;
-    rt_device_t uart_dev;
-	
-		uart_dev = uart_open("uart2");
-    if ( uart_dev!= RT_EOK)
-    {
-			 rt_kprintf("F:%s L:%d err!  uart open error!\n,",__FUNCTION__,__LINE__);
-		   return -1;
-    }
-		
+///***********************************************
+//*函数名：uart_thread_entry
+//*功能：作为uart串口口发送迪文指令
+//*备注：
+//************************************************/
 
-    while (1)
-    {   
-        /* 读数据 */
-        uart_rx_data = uart_getchar();
-        /* 错位 */
-        uart_rx_data = uart_rx_data + 1;
-        /* 输出 */
-        uart_putchar(uart_rx_data);
-
-    }            
-}
+//static void uart_thread_entry(void* parameter)
+//{    
+//    //rt_uint8_t uart_dht11_tx_data[8]={0x5A,0xA5,0x05,0x82,0x10,0x01,0x00,0x00};
+//		rt_uint8_t uart_ds18_tx_data[8]={0x5A,0xA5,0x05,0x82,0x10,0x01,0x00,0x00};
+//	
+//    if ( uart_open("uart1")!= RT_EOK)     //包含找设备和打开设备
+//    {
+//			 rt_kprintf("F:%s L:%d err!  uart open error!\n,",__FUNCTION__,__LINE__);
+//    }
+//		          
+//}
 
 
 
@@ -228,16 +219,9 @@ int HCSR501_part_init(void)
         return -1;
      }
 		 
-		 uart_tid = rt_thread_create("uart_thread",test_thread_entry,RT_NULL,1024,2,10);
-		 if(uart_tid == RT_NULL)
-		 {
-				rt_kprintf("F:%s L:%d err! uart_tid create fail!\n,",__FUNCTION__,__LINE__);
-			  return -1;
-		 }
-     
-		 rt_thread_startup(uart_tid);
+
      rt_thread_startup(tid);
-     rt_timer_start(hcs_timer);        
+     rt_timer_start(hcs_timer);
      return 0;
 }
 

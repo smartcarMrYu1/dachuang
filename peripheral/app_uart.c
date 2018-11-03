@@ -77,7 +77,6 @@ rt_err_t uart_open(const char *name)
     /* 查找到设备后将其打开 */
     if (uart_device != RT_NULL)
     {   
-
         res = rt_device_set_rx_indicate(uart_device, uart_intput);
         /* 检查返回值 */
         if (res != RT_EOK)
