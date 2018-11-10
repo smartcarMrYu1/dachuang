@@ -10,18 +10,16 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <rtdevice.h>
-#include "app_uart.h"
-
 
 #define EVENT_W_PIN      (0x01<<0)
 #define DS18B20_PIN      (0x01<<1)
 #define DHT11_PIN        (0x01<<2)
 #define EVENT_UNKNOW     (0x00)
 
-
 static rt_mq_t hcsr_mq;
 static rt_timer_t hcs_timer;
-
+                                             //83   地    址| 数据
+static char uart_tx_buffer[64]={0X5A,0XA5,0X05,0X83,0X10,0X01,0X00};  //缓冲区
 
 /*********************************************
 *函数名：HCSR501_timer_callback
@@ -67,14 +65,14 @@ static void HCSR501_timer_callback(void *parameter)   //回调函数尽量的简短，起到
 *************************************************/
 static void HCSR501_thread_entry(void *parameter)
 {
-	  float ds18b20_buff[1];
-		float dht11_buff[1];
+	  int ds18b20_buff[1];
+		int dht11_buff[1];
 	
     rt_uint8_t HCSR501_data1;
     rt_device_t pin_dev;
     rt_device_t ds18b20_dev;
     rt_device_t dht11_dev;
-	  rt_device_t uart_device;  //串口设备
+		rt_device_t uart_dev;
     
     pin_dev = rt_device_find("pin");
     if(pin_dev)
@@ -124,6 +122,14 @@ static void HCSR501_thread_entry(void *parameter)
         }
     }
 		
+		uart_dev = rt_device_find("uart1");
+		if (uart_dev!= RT_NULL)
+		{
+				if(rt_device_open(uart_dev, RT_DEVICE_OFLAG_RDWR|RT_DEVICE_FLAG_INT_TX) != RT_EOK)
+				{
+					  rt_kprintf("uart_open fail!");
+				}
+		}
     
     while(1)
     {
@@ -151,49 +157,33 @@ static void HCSR501_thread_entry(void *parameter)
              {
                  if(ds18b20_dev)
                  {
-                     rt_device_read(ds18b20_dev,0,ds18b20_buff,sizeof(ds18b20_buff));
-//									   uart_putchar();
-									   //rt_kprintf("tmp: %d",(int)(ds18b20_buff[0]));
-                     rt_kprintf("5A A5 05 82 10 01 00 65");
+                     rt_device_read(ds18b20_dev,0,ds18b20_buff,sizeof(ds18b20_buff));    //读ds18b20数据
+									   uart_tx_buffer[4]=0x10;
+									   uart_tx_buffer[5]=0x01;
+									   uart_tx_buffer[6]=ds18b20_buff[0]/256;
+									   uart_tx_buffer[7]=ds18b20_buff[0]%256;
+										 if(uart_dev != RT_NULL)
+										 rt_device_write(uart_dev, 0, &uart_tx_buffer[0],8);
+//										 rt_kprintf("ds18b20_temp:%d\n",(int)(ds18b20_buff[0]));
+									   
                  }
              }
-             if(HCSR501_data1 & DHT11_PIN)
-             {
-                 if(dht11_dev)
-                 {
-                     rt_device_read(dht11_dev,0,dht11_buff,sizeof(dht11_buff));
-                     rt_kprintf("dht11_tmp:%d\n",(int)(dht11_buff[0]));
-                 }
-             }
+//             if(HCSR501_data1 & DHT11_PIN)
+//             {
+//                 if(dht11_dev)
+//                 {
+//                     rt_device_read(dht11_dev,0,dht11_buff,sizeof(dht11_buff));
+//                     rt_kprintf("dht11_tmp:%d\n",(int)(dht11_buff[0]));
+//                 }
+//             }
          }
     }
 }
 
-///***********************************************
-//*函数名：uart_thread_entry
-//*功能：作为uart串口口发送迪文指令
-//*备注：
-//************************************************/
-
-//static void uart_thread_entry(void* parameter)
-//{    
-//    //rt_uint8_t uart_dht11_tx_data[8]={0x5A,0xA5,0x05,0x82,0x10,0x01,0x00,0x00};
-//		rt_uint8_t uart_ds18_tx_data[8]={0x5A,0xA5,0x05,0x82,0x10,0x01,0x00,0x00};
-//	
-//    if ( uart_open("uart1")!= RT_EOK)     //包含找设备和打开设备
-//    {
-//			 rt_kprintf("F:%s L:%d err!  uart open error!\n,",__FUNCTION__,__LINE__);
-//    }
-//		          
-//}
-
-
-
-
 int HCSR501_part_init(void)
 {
 	rt_thread_t tid;
-	rt_thread_t uart_tid;
+//	rt_thread_t uart_tid;
 
 	hcsr_mq = rt_mq_create("all_mq",32,2,RT_IPC_FLAG_FIFO);
     if(hcsr_mq == RT_NULL)
