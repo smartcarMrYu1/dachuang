@@ -19,7 +19,7 @@
 static rt_mq_t hcsr_mq;
 static rt_timer_t hcs_timer;
                                              //83   地    址| 数据
-static char uart_tx_buffer[64]={0X5A,0XA5,0X05,0X83,0X10,0X01,0X00};  //缓冲区
+static char uart_tx_buffer[9]={0X5A,0XA5,0X05,0X82,0X10,0X01,0X00,0x00};  //缓冲区
 
 /*********************************************
 *函数名：HCSR501_timer_callback
@@ -163,9 +163,9 @@ static void HCSR501_thread_entry(void *parameter)
 									   uart_tx_buffer[6]=ds18b20_buff[0]/256;
 									   uart_tx_buffer[7]=ds18b20_buff[0]%256;
 										 if(uart_dev != RT_NULL)
-										 rt_device_write(uart_dev, 0, &uart_tx_buffer[0],8);
-//										 rt_kprintf("ds18b20_temp:%d\n",(int)(ds18b20_buff[0]));
-									   
+										 rt_device_write(uart_dev, 0, &uart_tx_buffer[0],sizeof(uart_tx_buffer));
+										 rt_kprintf("\nds18b20_temp:%x\n",uart_tx_buffer[7]);
+//										 rt_kprintf("\nds18b20_temp1:%d\n",(int)(ds18b20_buff[0]));
                  }
              }
 //             if(HCSR501_data1 & DHT11_PIN)
