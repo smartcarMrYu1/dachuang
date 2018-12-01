@@ -18,7 +18,7 @@ int main(void)
 {
     /* user app entry */
 //  light_led();
-    HCSR501_part_init();
+//    HCSR501_part_init();
 //  pin_text();
     //ds18b20_read();
 	  //uart_part();
