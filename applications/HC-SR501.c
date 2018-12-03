@@ -28,6 +28,25 @@ float dht11_buff[1];
                                                            //82  地    址| 数据
 static rt_uint8_t ds_buffer[]={UART_DATA_H,UART_DATA_L,0X05,0X82,0X10,0x01,0X00,0x00};  //数据显示指令
 
+
+struct rx_msg
+{
+rt_device_t dev;
+rt_size_t size;
+};
+static char uart_rx_buffer[64];
+
+/* 数据到达回调函数*/
+rt_err_t uart_input(rt_device_t dev, rt_size_t size)
+{
+		struct rx_msg msg;
+		msg.dev = dev;
+		msg.size = size;
+		/* 发送消息到消息队列中*/
+		rt_mq_send(hcsr_mq, &msg, sizeof(struct rx_msg));
+		return RT_EOK;
+}
+
 /*********************************************
 *函数名：HCSR501_timer_callback
 *功能：HCSR501回调函数
@@ -72,10 +91,16 @@ static void HCSR501_timer_callback(void *parameter)   //回调函数尽量的简短，起到
 *************************************************/
 static void HCSR501_thread_entry(void *parameter)
 {
+		struct rx_msg msg;
+		int count = 0;
+//		rt_device_t device, write_device;
+		rt_err_t result = RT_EOK;
+	
     rt_device_t pin_dev;
     rt_device_t ds18b20_dev;
     rt_device_t dht11_dev;
 	  rt_device_t uart_dev;
+	  rt_uint32_t len;
     
     pin_dev = rt_device_find("pin");
     if(pin_dev)
@@ -125,6 +150,13 @@ static void HCSR501_thread_entry(void *parameter)
         }
     }
     
+		uart_dev= rt_device_find("uart2");
+		if (uart_dev!= RT_NULL)
+		{
+				/* 设置回调函数及打开设备*/
+				rt_device_set_rx_indicate(uart_dev, uart_input);
+				rt_device_open(uart_dev, RT_DEVICE_OFLAG_RDWR|RT_DEVICE_FLAG_INT_RX);
+		}
     
     while(1)
     {
@@ -157,8 +189,21 @@ static void HCSR501_thread_entry(void *parameter)
 									   ds_buffer[5]=0x01;
 									   ds_buffer[6]=(int)(ds18b20_buff[0])/256;
 									   ds_buffer[7]=(int)(ds18b20_buff[0])%256;
-//										 rt_kprintf("\nds18b20_temp:%x\n",uart_tx_buffer[i]);       //正常   0x19
-//										 rt_kprintf("\nds18b20_temp:%d\n",(int)(ds18b20_buff[0]));    //打印ds18b20数据正常   25℃
+										 
+									   result = rt_mq_recv(hcsr_mq, &msg, sizeof(struct rx_msg), 50);
+  									 if (result == -RT_ETIMEOUT)
+										 {
+										     /* 接收超时*/
+										     rt_kprintf("timeout count:%d\n", ++count);
+										 }
+									   if(result==RT_EOK)
+										 {
+												len = (sizeof(uart_rx_buffer) - 1) > msg.size ?msg.size : sizeof(uart_rx_buffer) - 1;
+											  len = rt_device_read(msg.dev, 0, &uart_rx_buffer[0],len);
+												uart_rx_buffer[len] = '\0';
+											  if (uart_dev != RT_NULL)
+												rt_device_write(uart_dev, 0, &ds_buffer[0],len);
+										 }
                  }
              }
              if(HCSR501_data1 & DHT11_PIN)
@@ -174,34 +219,34 @@ static void HCSR501_thread_entry(void *parameter)
 }
 
 
-void uart_thread_entry(void *parameter)
-{
-	  rt_uint8_t uart_rx_data;
+//void uart_thread_entry(void *parameter)
+//{
+//	  rt_uint8_t uart_rx_data;
 
-		if (uart_open("uart2") != RT_EOK)
-    {
-        rt_kprintf("uart open error.\n");
-    }
+//		if (uart_open("uart2") != RT_EOK)
+//    {
+//        rt_kprintf("uart open error.\n");
+//    }
 
-		uart_putstring(ds_buffer);
-		
-		while (1)
-    {   
-        /*读数据*/
-        uart_rx_data = uart_getchar();
-        /* 错位 */
-        uart_rx_data = uart_rx_data + 1;
-        /* 输出 */
-        uart_putchar(uart_rx_data);
-    }
-}
+//		uart_putstring(ds_buffer);
+//		
+//		while (1)
+//    {   
+//        /*读数据*/
+//        uart_rx_data = uart_getchar();
+//        /* 错位 */
+//        uart_rx_data = uart_rx_data + 1;
+//        /* 输出 */
+//        uart_putchar(uart_rx_data);
+//    }
+//}
 
 int HCSR501_part_init(void)
 {
 	rt_thread_t tid;
 	rt_thread_t uart_tid;
 
-	hcsr_mq = rt_mq_create("all_mq",128,4,RT_IPC_FLAG_FIFO);
+	hcsr_mq = rt_mq_create("all_mq",256,5,RT_IPC_FLAG_FIFO);
 	if(hcsr_mq == RT_NULL)
 	{
 			rt_kprintf("F:%s L:%d err! mq create fail!\n,",__FUNCTION__,__LINE__);
@@ -225,15 +270,15 @@ int HCSR501_part_init(void)
 			return -1;
 	 }
 	 
-	 uart_tid = rt_thread_create("test",uart_thread_entry, RT_NULL,1024, 23, 30);
-		if(uart_tid == RT_NULL)
-		{
-				rt_kprintf("F:%s L:%d err! uart_tid create fail!\n,",__FUNCTION__,__LINE__);
-				return -1;
-		}
+//	 uart_tid = rt_thread_create("test",uart_thread_entry, RT_NULL,1024, 21, 20);
+//		if(uart_tid == RT_NULL)
+//		{
+//				rt_kprintf("F:%s L:%d err! uart_tid create fail!\n,",__FUNCTION__,__LINE__);
+//				return -1;
+//		}
 
 	 rt_thread_startup(tid);
-   rt_thread_startup(uart_tid);
+//   rt_thread_startup(uart_tid);
 	 rt_timer_start(hcs_timer);
 	 return 0;
 }
