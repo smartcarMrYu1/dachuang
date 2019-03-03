@@ -15,6 +15,7 @@
 #define EVENT_W_PIN      (0x01<<0)
 #define DS18B20_PIN      (0x01<<1)
 #define DHT11_PIN        (0x01<<2)
+#define UART_TRANS       (0x01<<3)
 #define EVENT_UNKNOW     (0x00)
 #define UART_DATA_H      (0X5A)
 #define UART_DATA_L      (0xA5)
@@ -22,30 +23,14 @@
 static rt_mq_t hcsr_mq;
 static rt_timer_t hcs_timer;
 static rt_uint8_t HCSR501_data1;
+static rt_sem_t counting_sem = RT_NULL;
 
 float ds18b20_buff[1];
 float dht11_buff[1];
-                                                           //82  地    址| 数据
-static rt_uint8_t ds_buffer[]={UART_DATA_H,UART_DATA_L,0X05,0X82,0X10,0x01,0X00,0x00};  //数据显示指令
-
-
-struct rx_msg
-{
-rt_device_t dev;
-rt_size_t size;
-};
-static char uart_rx_buffer[64];
-
-/* 数据到达回调函数*/
-rt_err_t uart_input(rt_device_t dev, rt_size_t size)
-{
-		struct rx_msg msg;
-		msg.dev = dev;
-		msg.size = size;
-		/* 发送消息到消息队列中*/
-		rt_mq_send(hcsr_mq, &msg, sizeof(struct rx_msg));
-		return RT_EOK;
-}
+                                                       
+rt_uint8_t ds_buffer[8] = {UART_DATA_H,UART_DATA_L,0x05,0x82,0x10,0x01,0,0};  //数据显示指令
+//接收缓冲区
+static rt_uint8_t uart_rx_buffer[64];
 
 /*********************************************
 *函数名：HCSR501_timer_callback
@@ -57,13 +42,17 @@ static void HCSR501_timer_callback(void *parameter)   //回调函数尽量的简短，起到
     rt_uint8_t HCSR501_data = EVENT_W_PIN;
     static int _tick = 0;
     
-    if(_tick%2 == 0)                   //4秒发该数据
+    if(_tick%2 == 0)                   
     {
         HCSR501_data |=EVENT_UNKNOW;
     } 
-    if(_tick%4 == 0)                   //8秒~~~~~~~
+    if(_tick%4 == 0)                   
     {
         HCSR501_data |= EVENT_W_PIN;
+    }
+		if(_tick%6 == 0)                   
+    {
+        HCSR501_data |= UART_TRANS;
     }
     if(_tick%8 == 0)
     {
@@ -73,6 +62,7 @@ static void HCSR501_timer_callback(void *parameter)   //回调函数尽量的简短，起到
     {
         HCSR501_data |= DHT11_PIN;
     }
+
     if(_tick ++ > 10000)
     {
         _tick = 0;
@@ -91,16 +81,13 @@ static void HCSR501_timer_callback(void *parameter)   //回调函数尽量的简短，起到
 *************************************************/
 static void HCSR501_thread_entry(void *parameter)
 {
-		struct rx_msg msg;
-		int count = 0;
-//		rt_device_t device, write_device;
-		rt_err_t result = RT_EOK;
-	
     rt_device_t pin_dev;
     rt_device_t ds18b20_dev;
     rt_device_t dht11_dev;
-	  rt_device_t uart_dev;
-	  rt_uint32_t len;
+	  rt_uint8_t result=0;
+  	rt_err_t res = RT_EOK;
+	  rt_uint8_t i = 0;
+
     
     pin_dev = rt_device_find("pin");
     if(pin_dev)
@@ -150,13 +137,7 @@ static void HCSR501_thread_entry(void *parameter)
         }
     }
     
-		uart_dev= rt_device_find("uart2");
-		if (uart_dev!= RT_NULL)
-		{
-				/* 设置回调函数及打开设备*/
-				rt_device_set_rx_indicate(uart_dev, uart_input);
-				rt_device_open(uart_dev, RT_DEVICE_OFLAG_RDWR|RT_DEVICE_FLAG_INT_RX);
-		}
+    
     
     while(1)
     {
@@ -185,25 +166,14 @@ static void HCSR501_thread_entry(void *parameter)
                  if(ds18b20_dev)
                  {
                      rt_device_read(ds18b20_dev,0,&ds18b20_buff[0],sizeof(ds18b20_buff[0]));    //读ds18b20数据
-									   ds_buffer[4]=0x10;
-									   ds_buffer[5]=0x01;
-									   ds_buffer[6]=(int)(ds18b20_buff[0])/256;
-									   ds_buffer[7]=(int)(ds18b20_buff[0])%256;
-										 
-									   result = rt_mq_recv(hcsr_mq, &msg, sizeof(struct rx_msg), 50);
-  									 if (result == -RT_ETIMEOUT)
+										 ds_buffer[6]=(int)(ds18b20_buff[0])/256;
+										 ds_buffer[7]=(int)(ds18b20_buff[0])%256;
+										 res = rt_sem_release(counting_sem);
+										 if(RT_EOK == res)
 										 {
-										     /* 接收超时*/
-										     rt_kprintf("timeout count:%d\n", ++count);
+												 rt_kprintf("release sem L:%d  \n",__LINE__);
 										 }
-									   if(result==RT_EOK)
-										 {
-												len = (sizeof(uart_rx_buffer) - 1) > msg.size ?msg.size : sizeof(uart_rx_buffer) - 1;
-											  len = rt_device_read(msg.dev, 0, &uart_rx_buffer[0],len);
-												uart_rx_buffer[len] = '\0';
-											  if (uart_dev != RT_NULL)
-												rt_device_write(uart_dev, 0, &ds_buffer[0],len);
-										 }
+									   
                  }
              }
              if(HCSR501_data1 & DHT11_PIN)
@@ -219,34 +189,62 @@ static void HCSR501_thread_entry(void *parameter)
 }
 
 
-//void uart_thread_entry(void *parameter)
-//{
-//	  rt_uint8_t uart_rx_data;
+void device_thread_entry(void* parameter)
+{
+		int count = 0;
+		rt_device_t device;
+		rt_err_t result = RT_EOK;	
+		rt_err_t res = RT_EOK;
+	  rt_uint8_t m=0;
+		/* 查找系统中的串口2设备 */
+//	  if(uart_open("uart1") != RT_EOK)
+//		{
+// 			  rt_kprintf("uart1 open success!!  F:%d  L:%d",__FUNCTION__,__LINE__);
+//		}
 
-//		if (uart_open("uart2") != RT_EOK)
-//    {
-//        rt_kprintf("uart open error.\n");
-//    }
+	  device = rt_device_find("uart1");
+	  if(device != NULL)
+		{
+			  rt_device_open(device,RT_DEVICE_OFLAG_RDWR | RT_DEVICE_FLAG_INT_RX);			
+		}
+	  
+	
+	
+		while (1)
+		{
+				res = rt_sem_take(counting_sem, 50); /*  等待时间：一直等 */
+				if(res == RT_EOK)
+				{
+						if (device != RT_NULL)
+						rt_device_write(device,0,&ds_buffer,sizeof(ds_buffer));
+				}
+				
+//				data_read(device,uart_rx_buffer,sizeof(uart_rx_buffer));
+//				for(;m<8;m++)
+//				rt_kprintf("uart_rx_buffer is : %d",uart_rx_buffer[m]);
+		}
+}
 
-//		uart_putstring(ds_buffer);
-//		
-//		while (1)
-//    {   
-//        /*读数据*/
-//        uart_rx_data = uart_getchar();
-//        /* 错位 */
-//        uart_rx_data = uart_rx_data + 1;
-//        /* 输出 */
-//        uart_putchar(uart_rx_data);
-//    }
-//}
+
+
+
+
+
+
 
 int HCSR501_part_init(void)
 {
 	rt_thread_t tid;
 	rt_thread_t uart_tid;
+	
+	counting_sem = rt_sem_create("counting_sem",0,RT_IPC_FLAG_FIFO);
+	if(counting_sem == RT_NULL)
+	{
+			rt_kprintf("Failed to create counting semaphore\r\n");
+	}
 
-	hcsr_mq = rt_mq_create("all_mq",256,5,RT_IPC_FLAG_FIFO);
+
+	hcsr_mq = rt_mq_create("all_mq",1024,5,RT_IPC_FLAG_FIFO);
 	if(hcsr_mq == RT_NULL)
 	{
 			rt_kprintf("F:%s L:%d err! mq create fail!\n,",__FUNCTION__,__LINE__);
@@ -266,19 +264,21 @@ int HCSR501_part_init(void)
 	 {
 			rt_mq_delete(hcsr_mq);
 			rt_timer_delete(hcs_timer);
-			rt_kprintf("F:%s L:%d err! tid create fail!\n,",__FUNCTION__,__LINE__);
+			rt_kprintf("F:%s L:%d err! tid create fail!\n\n,",__FUNCTION__,__LINE__);
+			return -1;
+	 }
+		 
+	 uart_tid = rt_thread_create("uart_tid",device_thread_entry,RT_NULL,512,21,20);
+	 if(uart_tid == RT_NULL)
+	 {
+			rt_mq_delete(hcsr_mq);
+			rt_timer_delete(hcs_timer);
+			rt_kprintf("F:%s L:%d err! uart_tid create fail!\n\n,",__FUNCTION__,__LINE__);
 			return -1;
 	 }
 	 
-//	 uart_tid = rt_thread_create("test",uart_thread_entry, RT_NULL,1024, 21, 20);
-//		if(uart_tid == RT_NULL)
-//		{
-//				rt_kprintf("F:%s L:%d err! uart_tid create fail!\n,",__FUNCTION__,__LINE__);
-//				return -1;
-//		}
-
 	 rt_thread_startup(tid);
-//   rt_thread_startup(uart_tid);
+	 rt_thread_startup(uart_tid);
 	 rt_timer_start(hcs_timer);
 	 return 0;
 }

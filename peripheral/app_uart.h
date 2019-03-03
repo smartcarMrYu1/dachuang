@@ -29,9 +29,10 @@
 #include <rtthread.h>
 
 rt_err_t uart_open(const char *name);
-rt_uint8_t uart_getchar(void);
+rt_uint8_t uart_getchar(rt_device_t uart_device);
 void uart_putchar(rt_uint8_t c);
 void uart_putstring(rt_uint8_t *s);
 int uart_part(void);
+void data_read(rt_device_t device,rt_uint8_t* buff, int len);
 
 #endif
