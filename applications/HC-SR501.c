@@ -23,14 +23,14 @@
 static rt_mq_t hcsr_mq;
 static rt_timer_t hcs_timer;
 static rt_uint8_t HCSR501_data1;
-static rt_sem_t counting_sem = RT_NULL;
+static rt_sem_t uartdata_sem = RT_NULL;
 
 float ds18b20_buff[1];
 float dht11_buff[1];
                                                        
 rt_uint8_t ds_buffer[8] = {UART_DATA_H,UART_DATA_L,0x05,0x82,0x10,0x01,0,0};  //数据显示指令
 //接收缓冲区
-static rt_uint8_t uart_rx_buffer[64];
+extern rt_err_t uart_rx_ind(rt_device_t dev, rt_size_t size);
 
 /*********************************************
 *函数名：HCSR501_timer_callback
@@ -168,7 +168,7 @@ static void HCSR501_thread_entry(void *parameter)
                      rt_device_read(ds18b20_dev,0,&ds18b20_buff[0],sizeof(ds18b20_buff[0]));    //读ds18b20数据
 										 ds_buffer[6]=(int)(ds18b20_buff[0])/256;
 										 ds_buffer[7]=(int)(ds18b20_buff[0])%256;
-										 res = rt_sem_release(counting_sem);
+										 res = rt_sem_release(uartdata_sem);
 										 if(RT_EOK == res)
 										 {
 												 rt_kprintf("release sem L:%d  \n",__LINE__);
@@ -191,11 +191,9 @@ static void HCSR501_thread_entry(void *parameter)
 
 void device_thread_entry(void* parameter)
 {
-		int count = 0;
 		rt_device_t device;
 		rt_err_t result = RT_EOK;	
 		rt_err_t res = RT_EOK;
-	  rt_uint8_t m=0;
 		/* 查找系统中的串口2设备 */
 //	  if(uart_open("uart1") != RT_EOK)
 //		{
@@ -205,6 +203,7 @@ void device_thread_entry(void* parameter)
 	  device = rt_device_find("uart1");
 	  if(device != NULL)
 		{
+			  rt_device_set_rx_indicate(device, uart_rx_ind); //设置串口接收回调函数
 			  rt_device_open(device,RT_DEVICE_OFLAG_RDWR | RT_DEVICE_FLAG_INT_RX);			
 		}
 	  
@@ -212,16 +211,14 @@ void device_thread_entry(void* parameter)
 	
 		while (1)
 		{
-				res = rt_sem_take(counting_sem, 50); /*  等待时间：一直等 */
+				res = rt_sem_take(uartdata_sem, RT_WAITING_FOREVER); /*  等待时间：一直等 */
 				if(res == RT_EOK)
 				{
 						if (device != RT_NULL)
 						rt_device_write(device,0,&ds_buffer,sizeof(ds_buffer));
 				}
 				
-//				data_read(device,uart_rx_buffer,sizeof(uart_rx_buffer));
-//				for(;m<8;m++)
-//				rt_kprintf("uart_rx_buffer is : %d",uart_rx_buffer[m]);
+
 		}
 }
 
@@ -237,8 +234,9 @@ int HCSR501_part_init(void)
 	rt_thread_t tid;
 	rt_thread_t uart_tid;
 	
-	counting_sem = rt_sem_create("counting_sem",0,RT_IPC_FLAG_FIFO);
-	if(counting_sem == RT_NULL)
+	//串口数据更新信号量（发送）
+	uartdata_sem = rt_sem_create("uartdata_sem",0,RT_IPC_FLAG_FIFO);
+	if(uartdata_sem == RT_NULL)
 	{
 			rt_kprintf("Failed to create counting semaphore\r\n");
 	}
