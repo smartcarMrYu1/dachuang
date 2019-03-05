@@ -93,7 +93,7 @@ int dwin_init(void)
     if(dwin.init == RT_TRUE)
     {
         DWIN_INFO("The dwin lib initialized.\n"); 
-        return RT_EBUSY;
+        return RT_EBUSY; 
     }
     
     /* 初始化dwin结构体 */ 

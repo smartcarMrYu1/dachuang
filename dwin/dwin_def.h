@@ -167,7 +167,7 @@ struct dwin_data_frame
 }; 
 typedef struct dwin_data_frame* dwin_data_frame_t; 
 
-struct dwin_watch
+struct dwin_watch                  //¼àÌıÆ÷½á¹¹Ìå
 {
     rt_device_t serial; 
     rt_uint32_t baudrate; 

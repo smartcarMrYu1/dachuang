@@ -58,7 +58,7 @@ static uint8_t dwin_watch_getc(void)
     return ch;
 }
 
-static rt_err_t dwin_watch_rxcb(rt_device_t dev, rt_size_t size)
+static rt_err_t dwin_watch_rxcb(rt_device_t dev, rt_size_t size)      //串口回调；释放监听器信号量
 {
     return rt_sem_release(watch.rxsem);
 }
