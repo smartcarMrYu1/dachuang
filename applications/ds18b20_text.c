@@ -18,6 +18,7 @@ static int ds18b20_read(int argc,char *argv[])
         rt_kprintf("not find ds18b20_0! exit\n");
         return -1;
     }
+		
     if(rt_device_open(dev,RT_DEVICE_OFLAG_RDONLY) != RT_EOK)
     {
         rt_kprintf("open dev fail!! exit.\n");

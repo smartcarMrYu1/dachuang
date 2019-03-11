@@ -10,7 +10,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <rtdevice.h>
-#include "app_uart.h"
+
 
 #define EVENT_W_PIN      (0x01<<0)
 #define DS18B20_PIN      (0x01<<1)
@@ -23,14 +23,13 @@
 static rt_mq_t hcsr_mq;
 static rt_timer_t hcs_timer;
 static rt_uint8_t HCSR501_data1;
-static rt_sem_t uartdata_sem = RT_NULL;
 
 float ds18b20_buff[1];
 float dht11_buff[1];
                                                        
-rt_uint8_t ds_buffer[8] = {UART_DATA_H,UART_DATA_L,0x05,0x82,0x10,0x01,0,0};  //数据显示指令
-//接收缓冲区
-extern rt_err_t uart_rx_ind(rt_device_t dev, rt_size_t size);
+rt_uint8_t ds_buffer[2] = {0};  //数据显示指令
+
+
 
 /*********************************************
 *函数名：HCSR501_timer_callback
@@ -84,11 +83,7 @@ static void HCSR501_thread_entry(void *parameter)
     rt_device_t pin_dev;
     rt_device_t ds18b20_dev;
     rt_device_t dht11_dev;
-	  rt_uint8_t result=0;
-  	rt_err_t res = RT_EOK;
-	  rt_uint8_t i = 0;
-
-    
+ 
     pin_dev = rt_device_find("pin");
     if(pin_dev)
     {
@@ -166,14 +161,8 @@ static void HCSR501_thread_entry(void *parameter)
                  if(ds18b20_dev)
                  {
                      rt_device_read(ds18b20_dev,0,&ds18b20_buff[0],sizeof(ds18b20_buff[0]));    //读ds18b20数据
-										 ds_buffer[6]=(int)(ds18b20_buff[0])/256;
-										 ds_buffer[7]=(int)(ds18b20_buff[0])%256;
-										 res = rt_sem_release(uartdata_sem);
-										 if(RT_EOK == res)
-										 {
-												 rt_kprintf("release sem L:%d  \n",__LINE__);
-										 }
-									   
+										 ds_buffer[0]=(int)(ds18b20_buff[0])/256;
+										 ds_buffer[1]=(int)(ds18b20_buff[0])%256;
                  }
              }
              if(HCSR501_data1 & DHT11_PIN)
@@ -189,58 +178,10 @@ static void HCSR501_thread_entry(void *parameter)
 }
 
 
-void device_thread_entry(void* parameter)
-{
-		rt_device_t device;
-		rt_err_t result = RT_EOK;	
-		rt_err_t res = RT_EOK;
-		/* 查找系统中的串口2设备 */
-//	  if(uart_open("uart1") != RT_EOK)
-//		{
-// 			  rt_kprintf("uart1 open success!!  F:%d  L:%d",__FUNCTION__,__LINE__);
-//		}
-
-	  device = rt_device_find("uart1");
-	  if(device != NULL)
-		{
-			  rt_device_set_rx_indicate(device, uart_rx_ind); //设置串口接收回调函数
-			  rt_device_open(device,RT_DEVICE_OFLAG_RDWR | RT_DEVICE_FLAG_INT_RX);			
-		}
-	  
-	
-	
-		while (1)
-		{
-				res = rt_sem_take(uartdata_sem, RT_WAITING_FOREVER); /*  等待时间：一直等 */
-				if(res == RT_EOK)
-				{
-						if (device != RT_NULL)
-						rt_device_write(device,0,&ds_buffer,sizeof(ds_buffer));
-				}
-				
-
-		}
-}
-
-
-
-
-
-
-
 
 int HCSR501_part_init(void)
 {
 	rt_thread_t tid;
-	rt_thread_t uart_tid;
-	
-	//串口数据更新信号量（发送）
-	uartdata_sem = rt_sem_create("uartdata_sem",0,RT_IPC_FLAG_FIFO);
-	if(uartdata_sem == RT_NULL)
-	{
-			rt_kprintf("Failed to create counting semaphore\r\n");
-	}
-
 
 	hcsr_mq = rt_mq_create("all_mq",1024,5,RT_IPC_FLAG_FIFO);
 	if(hcsr_mq == RT_NULL)
@@ -265,23 +206,14 @@ int HCSR501_part_init(void)
 			rt_kprintf("F:%s L:%d err! tid create fail!\n\n,",__FUNCTION__,__LINE__);
 			return -1;
 	 }
-		 
-	 uart_tid = rt_thread_create("uart_tid",device_thread_entry,RT_NULL,512,21,20);
-	 if(uart_tid == RT_NULL)
-	 {
-			rt_mq_delete(hcsr_mq);
-			rt_timer_delete(hcs_timer);
-			rt_kprintf("F:%s L:%d err! uart_tid create fail!\n\n,",__FUNCTION__,__LINE__);
-			return -1;
-	 }
+
 	 
 	 rt_thread_startup(tid);
-	 rt_thread_startup(uart_tid);
 	 rt_timer_start(hcs_timer);
 	 return 0;
 }
 
-INIT_APP_EXPORT(HCSR501_part_init);
+//INIT_APP_EXPORT(HCSR501_part_init);
 /*总结一般步骤：
   1、首先把需要的线程、定时器、消息队列创建好
   2、如果创建失败，则删除，以释放资源
