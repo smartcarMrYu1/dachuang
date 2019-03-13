@@ -42,73 +42,73 @@ static void uasge(uint8_t argc, char **argv)
     }
     DWIN_PRINT("\n"); 
     
-    DWIN_PRINT("\033[32mThe command format:\033[0m\n"); 
-    DWIN_PRINT("\033[36m  01. read reg or var        dwin -t r <reg|var> <addr> <len>\033[0m\n"); 
-    DWIN_PRINT("\033[36m  02. write reg or var       dwin -t w <reg|var> <addr> <len> <data...>\033[0m\n"); 
-    DWIN_PRINT("\033[36m  03. print version          dwin -s ver\033[0m\n"); 
-    DWIN_PRINT("\033[36m  04. set or read backlight  dwin -s bl [level]\033[0m\n"); 
-    DWIN_PRINT("\033[36m  05. buzz tick*10ms         dwin -s buzz <tick>\033[0m\n");
-    DWIN_PRINT("\033[36m  06. read current page      dwin -s page \033[0m\n");
-    DWIN_PRINT("\033[36m  07. jump specified page    dwin -s jump <page>\033[0m\n"); 
-    DWIN_PRINT("\033[36m  08. en or disable touch    dwin -s touch <enable|disable>\033[0m\n");
-    DWIN_PRINT("\033[36m  09. set or read rtc        dwin -s rtc [year] [mon] [day] [hour] [min] [sec]\033[0m\n");
-    DWIN_PRINT("\033[36m  10. send keycode(0x01~FF)  dwin -s key <code>\033[0m\n"); 
-    DWIN_PRINT("\033[36m  11. print parses info      dwin -d parse\033[0m\n"); 
-    DWIN_PRINT("\033[36m  12. print pages info       dwin -d page\033[0m\n"); 
+    DWIN_PRINT("The command format:\033[0m\n"); 
+    DWIN_PRINT("  01. read reg or var        dwin -t r <reg|var> <addr> <len>\n"); 
+    DWIN_PRINT("  02. write reg or var       dwin -t w <reg|var> <addr> <len> <data...>\n"); 
+    DWIN_PRINT("  03. print version          dwin -s ver\n"); 
+    DWIN_PRINT("  04. set or read backlight  dwin -s bl [level]\n"); 
+    DWIN_PRINT("  05. buzz tick*10ms         dwin -s buzz <tick>\n");
+    DWIN_PRINT("  06. read current page      dwin -s page \n");
+    DWIN_PRINT("  07. jump specified page    dwin -s jump <page>\n"); 
+    DWIN_PRINT("  08. en or disable touch    dwin -s touch <enable|disable>\n");
+    DWIN_PRINT("  09. set or read rtc        dwin -s rtc [year] [mon] [day] [hour] [min] [sec]\n");
+    DWIN_PRINT("  10. send keycode(0x01~FF)  dwin -s key <code>\n"); 
+    DWIN_PRINT("  11. print parses info      dwin -d parse\n"); 
+    DWIN_PRINT("  12. print pages info       dwin -d page\n"); 
 }
 
 static void uasge_t(uint8_t argc, char **argv)
 {
     rt_uint8_t index = 0; 
     
-    DWIN_PRINT("\033[31mERR command format:\033[0m", argv[1]); 
+    DWIN_PRINT("command format:", argv[1]); 
     for(;index < argc; index++)
     {
         DWIN_PRINT(" %s", argv[index]); 
     }
     DWIN_PRINT("\n"); 
     
-    DWIN_PRINT("\033[32mThe command format:\033[0m\n"); 
-    DWIN_PRINT("\033[36m  01. read reg or var        dwin -t r <reg|var> <addr> <len>\033[0m\n"); 
-    DWIN_PRINT("\033[36m  02. write reg or var       dwin -t w <reg|var> <addr> <len> <data...>\033[0m\n"); 
+    DWIN_PRINT(" command format:\033[0m\n"); 
+    DWIN_PRINT("  01. read reg or var        dwin -t r <reg|var> <addr> <len>\n"); 
+    DWIN_PRINT("  02. write reg or var       dwin -t w <reg|var> <addr> <len> <data...>\n"); 
 }
 
 static void uasge_s(uint8_t argc, char **argv)
 {
     rt_uint8_t index = 0; 
     
-    DWIN_PRINT("\033[31mERR command format:\033[0m", argv[1]); 
+    DWIN_PRINT("ERR command format:", argv[1]); 
     for(;index < argc; index++) 
     {
         DWIN_PRINT(" %s", argv[index]); 
     }
     DWIN_PRINT("\n"); 
     
-    DWIN_PRINT("\033[32mThe command format:\033[0m\n"); 
-    DWIN_PRINT("\033[36m  01. print version          dwin -s ver\033[0m\n"); 
-    DWIN_PRINT("\033[36m  02. set or read backlight  dwin -s bl [level]\033[0m\n"); 
-    DWIN_PRINT("\033[36m  03. buzz tick*10ms         dwin -s buzz <tick>\033[0m\n");
-    DWIN_PRINT("\033[36m  04. read current page      dwin -s page \033[0m\n");
-    DWIN_PRINT("\033[36m  05. jump specified page    dwin -s jump <page>\033[0m\n");
-    DWIN_PRINT("\033[36m  06. en or disable touch    dwin -s touch <enable|disable>\033[0m\n");
-    DWIN_PRINT("\033[36m  07. set or read rtc        dwin -s rtc [year] [mon] [day] [hour] [min] [sec]\033[0m\n");
-    DWIN_PRINT("\033[36m  08. send keycode(0x01~FF)  dwin -s key <code>\033[0m\n");
+    DWIN_PRINT("The command format:\033[0m\n"); 
+    DWIN_PRINT("  01. print version          dwin -s ver\n"); 
+    DWIN_PRINT("  02. set or read backlight  dwin -s bl [level]\n"); 
+    DWIN_PRINT("  03. buzz tick*10ms         dwin -s buzz <tick>\n");
+    DWIN_PRINT("  04. read current page      dwin -s page \n");
+    DWIN_PRINT("  05. jump specified page    dwin -s jump <page>\n");
+    DWIN_PRINT("  06. en or disable touch    dwin -s touch <enable|disable>\n");
+    DWIN_PRINT("  07. set or read rtc        dwin -s rtc [year] [mon] [day] [hour] [min] [sec]\n");
+    DWIN_PRINT("  08. send keycode(0x01~FF)  dwin -s key <code>\n");
 }
 
 static void uasge_d(uint8_t argc, char **argv)
 {
     rt_uint8_t index = 0; 
     
-    DWIN_PRINT("\033[31mERR command format:\033[0m", argv[1]); 
+    DWIN_PRINT("ERR command format:", argv[1]); 
     for(;index < argc; index++) 
     {
         DWIN_PRINT(" %s", argv[index]); 
     }
     DWIN_PRINT("\n"); 
     
-    DWIN_PRINT("\033[32mThe command format:\033[0m\n"); 
-    DWIN_PRINT("\033[36m  01. print register parse   dwin -d parse\033[0m\n"); 
-    DWIN_PRINT("\033[36m  02. print create pase      dwin -d page\033[0m\n"); 
+    DWIN_PRINT("The command format:\n"); 
+    DWIN_PRINT("  01. print register parse   dwin -d parse\n"); 
+    DWIN_PRINT("  02. print create pase      dwin -d page\n"); 
 }
 
 /* 只有开启调试模式, 才有该命令 */ 
@@ -130,7 +130,7 @@ static int dwin_cmd(uint8_t argc, char **argv)
                 rt_uint8_t  len  = (rt_uint8_t )str2int(argv[5]); 
                 rt_uint16_t addr = (rt_uint16_t)str2int(argv[4]); 
                 
-                DWIN_DBG("User read \033[32m%d\033[0m byte(s) from \033[32m0x%.4x\033[0m reg: \n", len, addr); 
+                DWIN_DBG("User read%dbyte(s) from 0x%.4xreg: \n", len, addr); 
                 dwin_reg_read(addr, data, len); 
                 
                 return RT_EOK; 
@@ -143,7 +143,7 @@ static int dwin_cmd(uint8_t argc, char **argv)
                 rt_uint8_t  len  = (rt_uint8_t )str2int(argv[5]); 
                 rt_uint16_t addr = (rt_uint16_t)str2int(argv[4]); 
                 
-                DWIN_DBG("User read \033[32m%d\033[0m byte(s) from \033[32m0x%.4x\033[0m var: \n", len, addr); 
+                DWIN_DBG("User read %d byte(s) from 0x%.4x var: \n", len, addr); 
                 dwin_var_read(addr, data, len); 
                 
                 return RT_EOK; 
@@ -162,7 +162,7 @@ static int dwin_cmd(uint8_t argc, char **argv)
                     data[index] = (rt_uint8_t)str2int(argv[6+index]);
                 }
                 
-                DWIN_DBG("User write \033[32m%d\033[0m byte(s) from \033[32m0x%.4x\033[0m reg: \n", len, addr); 
+                DWIN_DBG("User write %d byte(s) from 0x%.4x reg: \n", len, addr); 
                 dwin_reg_write(addr, data, len); 
                 return RT_EOK; 
             }
@@ -180,7 +180,7 @@ static int dwin_cmd(uint8_t argc, char **argv)
                     data[index] = (rt_uint16_t)str2int(argv[6+index]);
                 }
                 
-                DWIN_DBG("User write \033[32m%d\033[0m byte(s) from \033[32m0x%.4x\033[0m var: \n", len, addr); 
+                DWIN_DBG("User write %d byte(s) from 0x%.4xvar: \n", len, addr); 
                 dwin_var_write(addr, data, len); 
                 return RT_EOK; 
             } 

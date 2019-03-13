@@ -33,8 +33,8 @@ static void dwin_data_init(struct dwin *dwin)
 
 static void dwin_verion_output(void)
 {
-    DWIN_INFO("Welcome to the dwin \033[32mv%d.%d.%d\033[0m lib.\n", DWIN_VERSION_M, DWIN_VERSION_S, DWIN_VERSION_R); 
-    DWIN_INFO("You can find the laster from <\033[31mhttps://github.com/liu2guang/dwin\033[0m>.\n"); 
+    DWIN_INFO("Welcome to the dwin v%d.%d.%d lib.\n", DWIN_VERSION_M, DWIN_VERSION_S, DWIN_VERSION_R); 
+    DWIN_INFO("You can find the laster from <https://github.com/liu2guang/dwin\n"); 
 }
 
 static rt_err_t dwin_self_check(void)

@@ -23,8 +23,6 @@
 #define DWIN_DGUSII_ACKH (0x4F) 
 #define DWIN_DGUSII_ACKL (0x4B) 
 
-rt_uint8_t result = 0;
-
 enum dwin_watch_state
 {
     DWIN_WATCH_STATE_IDLE = 0, 
@@ -52,13 +50,9 @@ static uint8_t dwin_watch_getc(void)           //get char
 {
     uint8_t ch; 
     
-    while(rt_device_read(watch.serial, (0), &ch, 1) != 1)
+    while(rt_device_read(watch.serial, (-1), &ch, sizeof(ch)) != 1)
     {
-        result = rt_sem_take(watch.rxsem, RT_WAITING_FOREVER);
-			  if(result != RT_EOK)
-				{
-					rt_kprintf("watch.rxsem  take  fail!!!F:%s , L:%d \n",__FUNCTION__,__LINE__);
-				}
+        rt_sem_take(watch.rxsem, RT_WAITING_FOREVER);
     }
 
     return ch;
@@ -127,11 +121,11 @@ static void dwin_watch_run(void *p)
             if(index == watch.data.data[2] + 3)
             {
 #ifdef DWIN_USING_DEBUG
-                DWIN_DBG("Listento \033[31m%.3dByte\033[0m data: {", watch.data.data[2]+3); 
+                DWIN_DBG("Listento %.3dByte data: {", watch.data.data[2]+3); 
 
                 for(index = 0; index < (watch.data.data[2]+3); index++) 
                 {
-                    DWIN_PRINT("\033[32m0x%.2x\033[0m ", watch.data.data[index]); 
+                    DWIN_PRINT("0x%.2x ", watch.data.data[index]); 
                 }
                 DWIN_PRINT("\b}.\n");
 #endif
@@ -500,14 +494,14 @@ rt_err_t dwin_reg_read(rt_uint16_t addr, rt_uint8_t *data, rt_uint8_t len)
     dwin_watch_putc(len); 
     
 #ifdef DWIN_USING_DEBUG
-    DWIN_DBG("Requests \033[31m%.3dByte\033[0m data: {", 7); 
-    DWIN_PRINT("\033[32m0x%.2x\033[0m ", DWIN_USING_HEADH); 
-    DWIN_PRINT("\033[32m0x%.2x\033[0m ", DWIN_USING_HEADL); 
-    DWIN_PRINT("\033[32m0x%.2x\033[0m ", 4); 
-    DWIN_PRINT("\033[32m0x%.2x\033[0m ", DWIN_REG_READ); 
-    DWIN_PRINT("\033[32m0x%.2x\033[0m ", DWIN_GET_BYTEH(addr)); 
-    DWIN_PRINT("\033[32m0x%.2x\033[0m ", DWIN_GET_BYTEL(addr)); 
-    DWIN_PRINT("\033[32m0x%.2x\033[0m}.\n", len); 
+    DWIN_DBG("Requests %.3dByte data: {", 7); 
+    DWIN_PRINT("0x%.2x ", DWIN_USING_HEADH); 
+    DWIN_PRINT("0x%.2x ", DWIN_USING_HEADL); 
+    DWIN_PRINT("0x%.2x ", 4); 
+    DWIN_PRINT("0x%.2x ", DWIN_REG_READ); 
+    DWIN_PRINT("0x%.2x ", DWIN_GET_BYTEH(addr)); 
+    DWIN_PRINT("0x%.2x ", DWIN_GET_BYTEL(addr)); 
+    DWIN_PRINT("0x%.2x }.\n", len); 
 #endif
     
     /* Blocking waits for data */ 
@@ -518,11 +512,11 @@ rt_err_t dwin_reg_read(rt_uint16_t addr, rt_uint8_t *data, rt_uint8_t len)
         if(index == len+7) 
         {
 #ifdef DWIN_USING_DEBUG
-            DWIN_DBG("Read reg \033[31m%.3dByte\033[0m data: {", rx_data[2]+3); 
+            DWIN_DBG("Read reg %.3dByte data: {", rx_data[2]+3); 
             
             for(index = 0; index < (len+7); index++) 
             {
-                DWIN_PRINT("\033[32m0x%.2x\033[0m ", rx_data[index]); 
+                DWIN_PRINT("0x%.2x ", rx_data[index]); 
             }
             DWIN_PRINT("\b}.\n");
 #endif
@@ -595,17 +589,17 @@ rt_err_t dwin_reg_write(rt_uint16_t addr, rt_uint8_t *data, rt_uint8_t len)
     }
     
 #ifdef DWIN_USING_DEBUG
-    DWIN_DBG("Wite reg \033[31m%.3dByte\033[0m data: {", 7); 
-    DWIN_PRINT("\033[32m0x%.2x\033[0m ", DWIN_USING_HEADH); 
-    DWIN_PRINT("\033[32m0x%.2x\033[0m ", DWIN_USING_HEADL); 
-    DWIN_PRINT("\033[32m0x%.2x\033[0m ", len + 3); 
-    DWIN_PRINT("\033[32m0x%.2x\033[0m ", DWIN_REG_WRITE); 
-    DWIN_PRINT("\033[32m0x%.2x\033[0m ", DWIN_GET_BYTEH(addr)); 
-    DWIN_PRINT("\033[32m0x%.2x\033[0m ", DWIN_GET_BYTEL(addr)); 
+    DWIN_DBG("Wite reg %.3dByte data: {", 7); 
+    DWIN_PRINT("0x%.2x ", DWIN_USING_HEADH); 
+    DWIN_PRINT("0x%.2x ", DWIN_USING_HEADL); 
+    DWIN_PRINT("0x%.2x ", len + 3); 
+    DWIN_PRINT("0x%.2x ", DWIN_REG_WRITE); 
+    DWIN_PRINT("0x%.2x ", DWIN_GET_BYTEH(addr)); 
+    DWIN_PRINT("0x%.2x ", DWIN_GET_BYTEL(addr)); 
     
     for(index = 0; index < len; index++)
     {
-        DWIN_PRINT("\033[32m0x%.2x\033[0m ", data[index]); 
+        DWIN_PRINT("0x%.2x ", data[index]); 
     }
     DWIN_PRINT("\b}.\n"); 
 #endif
@@ -618,11 +612,11 @@ rt_err_t dwin_reg_write(rt_uint16_t addr, rt_uint8_t *data, rt_uint8_t len)
         if(index == 6) 
         {
 #ifdef DWIN_USING_DEBUG
-            DWIN_DBG("Response \033[31m%.3dByte\033[0m data: {", rx_data[2]+3); 
+            DWIN_DBG("Response %.3dByte data: {", rx_data[2]+3); 
             
             for(index = 0; index < (rx_data[2]+3); index++) 
             {
-                DWIN_PRINT("\033[32m0x%.2x\033[0m ", rx_data[index]); 
+                DWIN_PRINT("0x%.2x ", rx_data[index]); 
             }
             DWIN_PRINT("\b}.\n");
 #endif
@@ -689,14 +683,14 @@ rt_err_t dwin_var_read(rt_uint16_t addr, rt_uint16_t *data, rt_uint8_t len)
     dwin_watch_putc(len); 
     
 #ifdef DWIN_USING_DEBUG
-    DWIN_DBG("Requests \033[31m%.3dByte\033[0m data: {", 7); 
-    DWIN_PRINT("\033[32m0x%.2x\033[0m ", DWIN_USING_HEADH); 
-    DWIN_PRINT("\033[32m0x%.2x\033[0m ", DWIN_USING_HEADL); 
-    DWIN_PRINT("\033[32m0x%.2x\033[0m ", 4); 
-    DWIN_PRINT("\033[32m0x%.2x\033[0m ", DWIN_VAR_READ); 
-    DWIN_PRINT("\033[32m0x%.2x\033[0m ", DWIN_GET_BYTEH(addr)); 
-    DWIN_PRINT("\033[32m0x%.2x\033[0m ", DWIN_GET_BYTEL(addr)); 
-    DWIN_PRINT("\033[32m0x%.2x\033[0m}.\n", len); 
+    DWIN_DBG("Requests %.3dByte data: {", 7); 
+    DWIN_PRINT(" 0x%.2x ", DWIN_USING_HEADH); 
+    DWIN_PRINT(" 0x%.2x ", DWIN_USING_HEADL); 
+    DWIN_PRINT(" 0x%.2x ", 4); 
+    DWIN_PRINT(" 0x%.2x ", DWIN_VAR_READ); 
+    DWIN_PRINT(" 0x%.2x ", DWIN_GET_BYTEH(addr)); 
+    DWIN_PRINT(" 0x%.2x ", DWIN_GET_BYTEL(addr)); 
+    DWIN_PRINT(" 0x%.2x}.\n", len); 
 #endif
     
     /* Blocking waits for data */ 
@@ -707,11 +701,11 @@ rt_err_t dwin_var_read(rt_uint16_t addr, rt_uint16_t *data, rt_uint8_t len)
         if(index == (len*2+7))
         {
 #ifdef DWIN_USING_DEBUG
-            DWIN_DBG("Read var \033[31m%.3dByte\033[0m data: {", rx_data[2]+3); 
+            DWIN_DBG("Read var %.3dByte  data: {", rx_data[2]+3); 
             
             for(index = 0; index < (rx_data[2]+3); index++) 
             {
-                DWIN_PRINT("\033[32m0x%.2x\033[0m ", rx_data[index]); 
+                DWIN_PRINT(" 0x%.2x  ", rx_data[index]); 
             }
             DWIN_PRINT("\b}.\n");
 #endif
@@ -788,18 +782,18 @@ rt_err_t dwin_var_write(rt_uint16_t addr, rt_uint16_t *data, rt_uint8_t len)
     }
     
 #ifdef DWIN_USING_DEBUG
-    DWIN_DBG("Wite var \033[31m%.3dByte\033[0m data: {", (len*2)+6); 
-    DWIN_PRINT("\033[32m0x%.2x\033[0m ", DWIN_USING_HEADH); 
-    DWIN_PRINT("\033[32m0x%.2x\033[0m ", DWIN_USING_HEADL); 
-    DWIN_PRINT("\033[32m0x%.2x\033[0m ", (len*2) + 3); 
-    DWIN_PRINT("\033[32m0x%.2x\033[0m ", DWIN_VAR_WRITE); 
-    DWIN_PRINT("\033[32m0x%.2x\033[0m ", DWIN_GET_BYTEH(addr)); 
-    DWIN_PRINT("\033[32m0x%.2x\033[0m ", DWIN_GET_BYTEL(addr)); 
+    DWIN_DBG("Wite var  %.3dByte  data: {", (len*2)+6); 
+    DWIN_PRINT(" 0x%.2x  ", DWIN_USING_HEADH); 
+    DWIN_PRINT(" 0x%.2x  ", DWIN_USING_HEADL); 
+    DWIN_PRINT(" 0x%.2x  ", (len*2) + 3); 
+    DWIN_PRINT(" 0x%.2x  ", DWIN_VAR_WRITE); 
+    DWIN_PRINT(" 0x%.2x  ", DWIN_GET_BYTEH(addr)); 
+    DWIN_PRINT(" 0x%.2x  ", DWIN_GET_BYTEL(addr)); 
     
     for(index = 0; index < len; index++)
     {
-        DWIN_PRINT("\033[32m0x%.2x\033[0m ", DWIN_GET_BYTEH(data[index])); 
-        DWIN_PRINT("\033[32m0x%.2x\033[0m ", DWIN_GET_BYTEL(data[index])); 
+        DWIN_PRINT(" 0x%.2x  ", DWIN_GET_BYTEH(data[index])); 
+        DWIN_PRINT(" 0x%.2x  ", DWIN_GET_BYTEL(data[index])); 
     }
     DWIN_PRINT("\b}.\n"); 
 #endif
@@ -812,11 +806,11 @@ rt_err_t dwin_var_write(rt_uint16_t addr, rt_uint16_t *data, rt_uint8_t len)
         if(index == 6) 
         {
 #ifdef DWIN_USING_DEBUG
-            DWIN_DBG("Response \033[31m%.3dByte\033[0m data: {", rx_data[2]+3); 
+            DWIN_DBG("Response  %.3dByte  data: {", rx_data[2]+3); 
             
             for(index = 0; index < (rx_data[2]+3); index++) 
             {
-                DWIN_PRINT("\033[32m0x%.2x\033[0m ", rx_data[index]); 
+                DWIN_PRINT(" 0x%.2x  ", rx_data[index]); 
             }
             DWIN_PRINT("\b}.\n");
 #endif

@@ -94,14 +94,14 @@ rt_err_t dwin_system_version(rt_uint32_t *ver_sn)
     buff[1] = (rt_uint8_t)(data & 0x00FF);
     *ver_sn = (DWIN_USING_TYPE * 10000) + (buff[0]) * 100 + buff[1];
     
-    DWIN_DBG("The dwin lib is \033[32mv%d.%d.%d\033[0m.\n", DWIN_VERSION_M, DWIN_VERSION_S, DWIN_VERSION_R); 
+    DWIN_DBG("The dwin lib is v%d.%d.%d\n", DWIN_VERSION_M, DWIN_VERSION_S, DWIN_VERSION_R); 
     DWIN_DBG("The dwin type is DGUSII, DGUSVer is %d, OSVer is %d, VER_SN is %d.\n", buff[0], buff[1], *ver_sn);
 
     return RT_EOK;
 #endif
 
 failed:
-    DWIN_DBG("The dwin version info read \033[32mfailed\033[0m.\n");
+    DWIN_DBG("The dwin version info read failed\n");
     return RT_ERROR;
 }
 
@@ -137,7 +137,7 @@ rt_err_t dwin_system_get_backlight(rt_uint8_t *level)
 #endif
 
 failed:
-    DWIN_DBG("The dwin backlight level read \033[32mfailed\033[0m.\n");
+    DWIN_DBG("The dwin backlight level read failed\n");
     return RT_ERROR;
 }
 
@@ -171,7 +171,7 @@ rt_err_t dwin_system_set_backlight(rt_uint8_t level)
 #endif
 
 failed:
-    DWIN_DBG("The dwin backlight set \033[32mfailed\033[0m.\n");
+    DWIN_DBG("The dwin backlight set failed.\n");
     return RT_ERROR;
 }
 
@@ -212,7 +212,7 @@ rt_err_t dwin_system_buzz(rt_uint8_t tick)
 #endif
 
 failed:
-    DWIN_DBG("The dwin keytone \033[32mfailed\033[0m.\n");
+    DWIN_DBG("The dwin keytone failed.\n");
     return RT_ERROR;
 }
 
@@ -254,7 +254,7 @@ rt_err_t dwin_system_jump(rt_uint16_t page)
 #endif
 
 failed:
-    DWIN_DBG("The dwin jump %d page \033[32mfailed\033[0m.\n", page);
+    DWIN_DBG("The dwin jump %d page failed.\n", page);
     return RT_ERROR;
 }
 
@@ -296,7 +296,7 @@ rt_err_t dwin_system_page(rt_uint16_t *page)
 #endif
 
 failed:
-    DWIN_DBG("The dwin read page \033[32mfailed\033[0m.\n");
+    DWIN_DBG("The dwin read page failed.\n");
     return RT_ERROR;
 }
 
@@ -333,11 +333,11 @@ rt_err_t dwin_system_touch(rt_bool_t enable)
 failed:
     if (enable == RT_TRUE)
     {
-        DWIN_DBG("The dwin touch enable \033[32mfailed\033[0m.\n");
+        DWIN_DBG("The dwin touch enable failed.\n");
     }
     else
     {
-        DWIN_DBG("The dwin touch disable \033[32mfailed\033[0m.\n");
+        DWIN_DBG("The dwin touch disable failed.\n");
     }
 
     return RT_ERROR;
@@ -399,7 +399,7 @@ rt_err_t dwin_system_get_rtc(struct dwin_rtc *rtc)
 #endif
 
 failed:
-    DWIN_DBG("The dwin rtc info read \033[32mfailed\033[0m.\n");
+    DWIN_DBG("The dwin rtc info read failed.\n");
     return RT_ERROR;
 }
 
@@ -456,7 +456,7 @@ rt_err_t dwin_system_set_rtc(struct dwin_rtc rtc)
             (rtc.minute > 59)                  ||
             (rtc.second > 59))
     {
-        DWIN_DBG("The dwin rtc set \033[32mfailed\033[0m, Invalid argument: %.4d-%.2d-%.2d %.2d:%.2d:%.2d.\n",
+        DWIN_DBG("The dwin rtc set failed, Invalid argument: %.4d-%.2d-%.2d %.2d:%.2d:%.2d.\n",
                  rtc.year, rtc.month, rtc.day, rtc.hour, rtc.minute, rtc.second);
         return RT_ERROR;
     }
@@ -477,7 +477,7 @@ rt_err_t dwin_system_set_rtc(struct dwin_rtc rtc)
 #endif
 
 failed:
-    DWIN_DBG("The dwin rtc set \033[32mfailed\033[0m.\n");
+    DWIN_DBG("The dwin rtc set failed.\n");
     return RT_ERROR;
 }
 
@@ -543,7 +543,7 @@ rt_err_t dwin_system_key(rt_uint8_t code)
 #endif
 
 failed:
-    DWIN_DBG("The dwin send key code 0x%.2x(%d) \033[32mfailed\033[0m.\n", code, code);
+    DWIN_DBG("The dwin send key code 0x%.2x(%d) mfailed.\n", code, code);
     return RT_ERROR;
 }
 
