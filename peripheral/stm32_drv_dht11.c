@@ -245,7 +245,7 @@ static rt_err_t stm32_dht11_init(rt_device_t dev)
     DHT11_Dout_GPIO_CLK_ENABLE();	      //使能时钟
     
     GPIO_InitStruct.Pin = get_st_pin(dht11->hard_desc->pin);          //选定引脚
-    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;                       //设为开漏输出模式
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;                       //设为开漏输出模式
     GPIO_InitStruct.Pull = GPIO_PULLUP;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;                //IO口最大速度
     HAL_GPIO_Init(dht11->hard_desc->gpio, &GPIO_InitStruct);
