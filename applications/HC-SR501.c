@@ -10,24 +10,22 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <rtdevice.h>
-
+#include <dwin.h>
 
 #define EVENT_W_PIN      (0x01<<0)
 #define DS18B20_PIN      (0x01<<1)
 #define DHT11_PIN        (0x01<<2)
-#define UART_TRANS       (0x01<<3)
 #define EVENT_UNKNOW     (0x00)
-#define UART_DATA_H      (0X5A)
-#define UART_DATA_L      (0xA5)
+
 
 static rt_mq_t hcsr_mq;
 static rt_timer_t hcs_timer;
 static rt_uint8_t HCSR501_data1;
 
 float ds18b20_buff[1];
-float dht11_buff[1];
+rt_uint16_t dht11_buff[2];
                                                        
-rt_uint8_t ds_buffer[2] = {0};  //数据显示指令
+rt_uint16_t ds_buffer[1] = {0};  //数据显示指令
 
 
 
@@ -41,23 +39,19 @@ static void HCSR501_timer_callback(void *parameter)   //回调函数尽量的简短，起到
     rt_uint8_t HCSR501_data = EVENT_W_PIN;
     static int _tick = 0;
     
-    if(_tick%2 == 0)                   
+    if(_tick%8 == 0)                   
     {
         HCSR501_data |=EVENT_UNKNOW;
     } 
+		if(_tick%2 == 0)
+    {
+        HCSR501_data |= DS18B20_PIN;
+    }
     if(_tick%4 == 0)                   
     {
         HCSR501_data |= EVENT_W_PIN;
     }
-		if(_tick%6 == 0)                   
-    {
-        HCSR501_data |= UART_TRANS;
-    }
-    if(_tick%8 == 0)
-    {
-        HCSR501_data |= DS18B20_PIN;
-    }
-    if(_tick%12 == 0)
+    if(_tick%6 == 0)
     {
         HCSR501_data |= DHT11_PIN;
     }
@@ -83,6 +77,9 @@ static void HCSR501_thread_entry(void *parameter)
     rt_device_t pin_dev;
     rt_device_t ds18b20_dev;
     rt_device_t dht11_dev;
+		rt_uint8_t tmp = 0;
+	  rt_uint16_t dht11_rev_buf[2]={0};
+		rt_uint16_t *dht11_tmp = NULL;
  
     pin_dev = rt_device_find("pin");
     if(pin_dev)
@@ -161,8 +158,11 @@ static void HCSR501_thread_entry(void *parameter)
                  if(ds18b20_dev)
                  {
                      rt_device_read(ds18b20_dev,0,&ds18b20_buff[0],sizeof(ds18b20_buff[0]));    //读ds18b20数据
-										 ds_buffer[0]=(int)(ds18b20_buff[0])/256;
-										 ds_buffer[1]=(int)(ds18b20_buff[0])%256;
+										 ds_buffer[0] = (rt_uint16_t)(ds18b20_buff[0]);
+									   if(dwin_var_write(0x1001,ds_buffer,sizeof(ds_buffer)) == RT_EOK)  
+											{
+													rt_kprintf("ds_buffer write data success !\n");				
+											}
                  }
              }
              if(HCSR501_data1 & DHT11_PIN)
@@ -170,7 +170,7 @@ static void HCSR501_thread_entry(void *parameter)
                  if(dht11_dev)
                  {
                      rt_device_read(dht11_dev,0,dht11_buff,sizeof(dht11_buff));
-                     rt_kprintf("dht11_tmp:%d\n",(int)(dht11_buff[0]));
+                     rt_kprintf("dht11_tmp:%d\n",dht11_buff);
                  }
              }
          }
@@ -212,8 +212,9 @@ int HCSR501_part_init(void)
 	 rt_timer_start(hcs_timer);
 	 return 0;
 }
+INIT_APP_EXPORT(HCSR501_part_init);
 
-//INIT_APP_EXPORT(HCSR501_part_init);
+
 /*总结一般步骤：
   1、首先把需要的线程、定时器、消息队列创建好
   2、如果创建失败，则删除，以释放资源
