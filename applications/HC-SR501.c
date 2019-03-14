@@ -23,10 +23,11 @@ static rt_timer_t hcs_timer;
 static rt_uint8_t HCSR501_data1;
 
 float ds18b20_buff[1];
-rt_uint16_t dht11_buff[2];
+float dht11_buff[2] = {0};
                                                        
 rt_uint16_t ds_buffer[1] = {0};  //数据显示指令
-
+rt_uint16_t dht11_buffer1[1] = {0};
+rt_uint16_t dht11_buffer2[1] = {0};
 
 
 /*********************************************
@@ -78,7 +79,7 @@ static void HCSR501_thread_entry(void *parameter)
     rt_device_t ds18b20_dev;
     rt_device_t dht11_dev;
 		rt_uint8_t tmp = 0;
-	  rt_uint16_t dht11_rev_buf[2]={0};
+
 		rt_uint16_t *dht11_tmp = NULL;
  
     pin_dev = rt_device_find("pin");
@@ -121,7 +122,7 @@ static void HCSR501_thread_entry(void *parameter)
             struct rt_device_pin_mode dht11_pin_mode;
             
             dht11_pin_mode.pin = 97;
-            dht11_pin_mode.mode = PIN_MODE_INPUT_PULLDOWN;
+            dht11_pin_mode.mode = PIN_MODE_INPUT_PULLUP;
             if(rt_device_control(dht11_dev,0,&dht11_pin_mode) != RT_EOK)
             {
                 rt_kprintf("dht11 pin open fail!!\n");
@@ -159,7 +160,7 @@ static void HCSR501_thread_entry(void *parameter)
                  {
                      rt_device_read(ds18b20_dev,0,&ds18b20_buff[0],sizeof(ds18b20_buff[0]));    //读ds18b20数据
 										 ds_buffer[0] = (rt_uint16_t)(ds18b20_buff[0]);
-									   if(dwin_var_write(0x1001,ds_buffer,sizeof(ds_buffer)) == RT_EOK)  
+									   if(dwin_var_write(0x1010,ds_buffer,sizeof(ds_buffer)) == RT_EOK)  
 											{
 													rt_kprintf("ds_buffer write data success !\n");				
 											}
@@ -170,7 +171,16 @@ static void HCSR501_thread_entry(void *parameter)
                  if(dht11_dev)
                  {
                      rt_device_read(dht11_dev,0,dht11_buff,sizeof(dht11_buff));
-                     rt_kprintf("dht11_tmp:%d\n",dht11_buff);
+									   dht11_buffer1[0] = (rt_uint16_t)dht11_buff[0];
+									   dht11_buffer2[0] = (rt_uint16_t)dht11_buff[1];
+										 if(dwin_var_write(0x1001,dht11_buffer1,sizeof(ds_buffer)) == RT_EOK)  
+                     {
+													rt_kprintf("dht11_buffer1[1] write data success !\n");				
+                     }
+										 if(dwin_var_write(0x1003,dht11_buffer2,sizeof(ds_buffer)) == RT_EOK)  
+                     {
+													rt_kprintf("dht11_buffer2[2] write data success !\n");				
+                     }
                  }
              }
          }
