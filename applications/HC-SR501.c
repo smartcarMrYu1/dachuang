@@ -3,7 +3,9 @@
 2、一个周期定时器
 3、定时器回调里面给线程发邮件
 4、线程里面等待接受邮件，收到邮件后，读一次IO
-
+*
+*线程：输入，用于采集传感器数据
+*
 ***********************************************/
 #include <rtthread.h>
 #include <stdio.h>
@@ -18,15 +20,15 @@
 #define EVENT_UNKNOW     (0x00)
 
 
-static rt_mq_t hcsr_mq;
-static rt_timer_t hcs_timer;
+static rt_mq_t sensor_mq;
+static rt_timer_t sensor_timer;
 static rt_uint8_t HCSR501_data1;
 
 float ds18b20_buff[1];
 float dht11_buff[2] = {0};
                                                        
 rt_uint16_t ds_buffer[1] = {0};  //数据显示指令
-rt_uint16_t dht11_buffer1[1] = {0};
+rt_uint16_t dht11_buffer1[1] = {0};  
 rt_uint16_t dht11_buffer2[1] = {0};
 
 
@@ -61,7 +63,7 @@ static void HCSR501_timer_callback(void *parameter)   //回调函数尽量的简短，起到
     {
         _tick = 0;
     }
-     if(rt_mq_send(hcsr_mq, &HCSR501_data, sizeof(HCSR501_data)) != RT_EOK)
+     if(rt_mq_send(sensor_mq, &HCSR501_data, sizeof(HCSR501_data)) != RT_EOK)
      {
          rt_kprintf("F:%s L:%d err!  message quene1 full!\n,",__FUNCTION__,__LINE__);
          return;
@@ -73,14 +75,12 @@ static void HCSR501_timer_callback(void *parameter)   //回调函数尽量的简短，起到
 *功能：
 *备注：
 *************************************************/
-static void HCSR501_thread_entry(void *parameter)
+static void sensor_thread_entry(void *parameter)
 {
     rt_device_t pin_dev;
     rt_device_t ds18b20_dev;
     rt_device_t dht11_dev;
-		rt_uint8_t tmp = 0;
 
-		rt_uint16_t *dht11_tmp = NULL;
  
     pin_dev = rt_device_find("pin");
     if(pin_dev)
@@ -134,7 +134,7 @@ static void HCSR501_thread_entry(void *parameter)
     
     while(1)
     {
-         if(rt_mq_recv(hcsr_mq,&HCSR501_data1,sizeof(HCSR501_data1),RT_WAITING_FOREVER) == RT_EOK)
+         if(rt_mq_recv(sensor_mq,&HCSR501_data1,sizeof(HCSR501_data1),RT_WAITING_FOREVER) == RT_EOK)
          {
              if(HCSR501_data1 & EVENT_W_PIN)
              {
@@ -173,11 +173,11 @@ static void HCSR501_thread_entry(void *parameter)
                      rt_device_read(dht11_dev,0,dht11_buff,sizeof(dht11_buff));
 									   dht11_buffer1[0] = (rt_uint16_t)dht11_buff[0];
 									   dht11_buffer2[0] = (rt_uint16_t)dht11_buff[1];
-										 if(dwin_var_write(0x1001,dht11_buffer1,sizeof(ds_buffer)) == RT_EOK)  
+										 if(dwin_var_write(0x1003,dht11_buffer1,sizeof(ds_buffer)) == RT_EOK)  
                      {
 													rt_kprintf("dht11_buffer1[1] write data success !\n");				
                      }
-										 if(dwin_var_write(0x1003,dht11_buffer2,sizeof(ds_buffer)) == RT_EOK)  
+										 if(dwin_var_write(0x1001,dht11_buffer2,sizeof(ds_buffer)) == RT_EOK)  
                      {
 													rt_kprintf("dht11_buffer2[2] write data success !\n");				
                      }
@@ -191,35 +191,35 @@ static void HCSR501_thread_entry(void *parameter)
 
 int HCSR501_part_init(void)
 {
-	rt_thread_t tid;
+	rt_thread_t sensor_tid;
 
-	hcsr_mq = rt_mq_create("all_mq",1024,5,RT_IPC_FLAG_FIFO);
-	if(hcsr_mq == RT_NULL)
+	sensor_mq = rt_mq_create("sensor_mq",1024,5,RT_IPC_FLAG_FIFO);
+	if(sensor_mq == RT_NULL)
 	{
-			rt_kprintf("F:%s L:%d err! mq create fail!\n,",__FUNCTION__,__LINE__);
+			rt_kprintf("F:%s L:%d err! sensor_mq create fail!\n,",__FUNCTION__,__LINE__);
 			return -1;
 	}
 
-	hcs_timer = rt_timer_create("HCSR501_timer",HCSR501_timer_callback,RT_NULL,500,RT_TIMER_FLAG_PERIODIC);
-	if(hcs_timer == RT_NULL)
+	sensor_timer = rt_timer_create("sensor_timer",HCSR501_timer_callback,RT_NULL,500,RT_TIMER_FLAG_PERIODIC);
+	if(sensor_timer == RT_NULL)
 	{
-			rt_kprintf("F:%s L:%d err! hcs_timer create fail!\n,",__FUNCTION__,__LINE__);
-			rt_mq_delete(hcsr_mq);
+			rt_kprintf("F:%s L:%d err! sensor_timer create fail!\n,",__FUNCTION__,__LINE__);
+			rt_mq_delete(sensor_mq);
 			return -1;
 	}
 	
-	 tid = rt_thread_create("tid",HCSR501_thread_entry,RT_NULL,512,22,20);
-	 if(tid == RT_NULL)
+	 sensor_tid = rt_thread_create("tid",sensor_thread_entry,RT_NULL,512,22,20);
+	 if(sensor_tid == RT_NULL)
 	 {
-			rt_mq_delete(hcsr_mq);
-			rt_timer_delete(hcs_timer);
+			rt_mq_delete(sensor_mq);
+			rt_timer_delete(sensor_timer);
 			rt_kprintf("F:%s L:%d err! tid create fail!\n\n,",__FUNCTION__,__LINE__);
 			return -1;
 	 }
 
 	 
-	 rt_thread_startup(tid);
-	 rt_timer_start(hcs_timer);
+	 rt_thread_startup(sensor_tid);
+	 rt_timer_start(sensor_timer);
 	 return 0;
 }
 INIT_APP_EXPORT(HCSR501_part_init);
