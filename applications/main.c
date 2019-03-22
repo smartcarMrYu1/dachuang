@@ -14,41 +14,54 @@
 #include <rtthread.h>
 #include <board.h>
 #include <dwin.h>
-
-extern rt_uint16_t ds_buffer[1];
+#include "public_def.h"
 
 /* 页面 */ 
-#define PAGE_NUM 3
-dwin_page_t page[PAGE_NUM]; 
+
+dwin_page_t page[PAGE_NUM];
 
 dwin_num_input_t input; 
-dwin_button_t    login; 
+dwin_button_t    login1,login2,login3,login4,login5,login6,login7; 
 dwin_qrcode_t    qrcode; 
 dwin_gbk_t       gbk; 
 dwin_icon_t      icon; 
 dwin_num_t       num;
 
+static void login_callback(void)
+{
+		rt_kprintf("Login.\n");
+}
+
+static void login1_cb(void)
+{
+	  led1_light();
+}
+static void login2_cb(void)
+{
+		led2_light();
+}
 
 int main(void)
 {
     /* user app entry */
 		rt_uint16_t index = 0; 
-  	rt_uint16_t *ds_rev_buf = NULL;
-	  *ds_rev_buf = ds_buffer[0]; 
     
     for(index = 0; index < sizeof(page)/sizeof(dwin_page_t); index++)
     {
         page[index] = dwin_page_create(index); 
     }
-
-		//第三页写数字
-		num = dwin_num_create(page[2],0x1001,DWIN_NUM_TYPE_U16);
-		dwin_num_set_value_u16(num,ds_buffer[0]);
+    /* 界面4 开关 */
+		login1 = dwin_button_create(page[3], 0x1024, login_callback); 
+		login2 = dwin_button_create(page[3], 0x1026, login_callback); 
+		login3 = dwin_button_create(page[3], 0x1028, login_callback); 
+		login4 = dwin_button_create(page[3], 0x102A, login_callback); 
+		/* 界面5 开关 */
+		login5 = dwin_button_create(page[4], 0x102C, login_callback); 
+		/* 界面6 开关 */
+		login6 = dwin_button_create(page[3], 0x102E, login_callback); 
+		login7 = dwin_button_create(page[3], 0x1030, login_callback); 
 		
-//		if(dwin_var_write(0x1001,ds_rev_buf,sizeof(ds_buffer)) == RT_EOK)  
-//		{
-//        rt_kprintf("ds_buffer write data success !\n");				
-//		}
+
 		
     return dwin_run(0);
 }
